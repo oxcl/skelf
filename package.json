@@ -1,0 +1,40 @@
+{
+  "name": "skelf",
+  "version": "0.0.1",
+  "description": "Understanding and Modifying Structured Binary Data",
+  "main": "dist/index.js",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon --exec 'tsc && node .' -w src/",
+    "run": "tsc && node .",
+    "playground": "nodemon --exec 'tsc && node dist/playground.js' -w src/",
+    "test": "echo 'no test yet'"
+  },
+  "keywords": [
+    "binary",
+    "blob",
+    "parse",
+    "parser",
+    "encode",
+    "encoder",
+    "decode",
+    "decoder",
+    "hex",
+    "editor",
+    "poke",
+    "kaitai",
+    "struct"
+  ],
+  "author": "oxcl",
+  "license": "LGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oxcl/skelf.git"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "typescript": "^5.4.3"
+  }
+}
