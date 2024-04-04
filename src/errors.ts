@@ -1,10 +1,16 @@
 export abstract class SkelfError extends Error {
-  abstract name : string;
-  constructor(message : string,options : { cause? : any, context? : any}){
-    super(message.replace(/\n[ \t]+/," "),options);
+  abstract override name : string;
+  context? : any;
+  constructor(message : string,{cause,context} : { cause? : any, context? : any}){
+    super(message.replace(/\n[ \t]+/," "));
+    super.cause = cause;
+    this.context = context;
   }
 }
 
 export class InvalidOffsetError extends Error {
-  name = "INVALID_OFFSET_ERROR"
+  override name = "INVALID_OFFSET_ERROR"
+}
+export class LockedSpaceError extends Error {
+  override name = "LOCKED_SPACE_ERROR"
 }

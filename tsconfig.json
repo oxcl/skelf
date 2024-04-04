@@ -1,7 +1,7 @@
 {
   "include": ["src/**/*"],
   "compilerOptions": {
-    "target": "es2017",
+    "target": "es2022",
     "alwaysStrict": true,
     "noImplicitAny": true,
     "noImplicitOverride": true,

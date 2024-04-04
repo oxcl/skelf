@@ -1,5 +1,6 @@
 export interface IAbstractSpace {
   readonly locked : boolean;
+  name : string;
   close : () => Promise<void>;
 }
 export interface IReadableSpace extends IAbstractSpace{
