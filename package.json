@@ -10,6 +10,7 @@
     "dev": "nodemon --exec 'tsc && node .' -w src/",
     "run": "tsc && node .",
     "playground": "nodemon --exec 'tsc && node dist/playground.js' -w src/",
+    "playground:run": "tsc && node dist/playground.js",
     "test": "echo 'no test yet'"
   },
   "keywords": [
@@ -33,7 +34,13 @@
     "type": "git",
     "url": "git+https://github.com/oxcl/skelf.git"
   },
+  "exports": {
+    ".": "./dist/index.js",
+    "./units": "./dist/units.js",
+    "./errors": "./dist/errors.js"
+  },
   "devDependencies": {
+    "@types/node": "^20.12.4",
     "nodemon": "^3.1.0",
     "typescript": "^5.4.3"
   }

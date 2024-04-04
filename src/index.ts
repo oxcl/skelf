@@ -1,36 +1,31 @@
-interface Unit<T> {
-  read : (input : Input) => Promise<T>;
-  write : (value : T,output : Output) => Promise<number>;
-  constraint? : () => boolean;
+export interface IAbstractSpace {
+  readonly locked : boolean;
+  close : () => Promise<void>;
+}
+export interface IReadableSpace extends IAbstractSpace{
+  read  : (offset : Offset,size : Offset) => Promise<ArrayBuffer>;
+}
+export interface IWritableSpace extends IAbstractSpace {
+  write : (chunk : ArrayBuffer,offset : Offset) => Promise<number>
+}
+export interface ISpace extends IReadableSpace, IWritableSpace {}
+
+export interface IAbstractStream {
+  readonly locked : boolean;
+  close : () => Promise<void>;
+}
+export interface IReadableStream extends IAbstractStream {
+  read : (size : Offset) => Promise<ArrayBuffer>;
+}
+export interface IWritableStream extends IAbstractStream {
+  write : (chunk : ArrayBuffer) => Promise<number>;
 }
 
-interface IHandle {
-  getOffset : () => Promise<number>;
-}
-interface IInputHandle {
-  read : (size : number) => Promise<Uint8Array>;
-}
+export type Offset = number | string | [number,number] | { amount : number, unit : number};
 
-interface IOutputHandle {
-  write : (chunk : Uint8Array) => Promise<number>;
+export interface Skelf<T> {
+  read : (input : IReadableSpace | IReadableStream,offset? : Offset) => Promise<T>;
+  write : (value : T,output : IWritableSpace | IWritableStream, offset? : Offset) => Promise<number>;
 }
 
-class InputHandle {
-
-}
-
-const byte = {
-  read(input : Input){
-    if(input.locked)
-      throw new SkelfError(`can't read a ReadableStream input when it's locked. awaiting a previous call to a
-                            Unit or a function that uses this stream might fix the issue.`);
-    const reader = input.getReader();
-    reader.read()
-  }
-} as Unit<number>
-
-class SkelfError extends Error {
-  constructor(msg : string){
-    super(`skelf: ${msg}`.replace(/\n +/," "));
-  }
-}
+export * from "skelf/units"

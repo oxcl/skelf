@@ -10,7 +10,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "strict": true,
     "useUnknownInCatchVariables": true,
-    "module": "es2022",
+    "module": "nodenext",
     "rootDir": "src",
     "outDir": "dist",
     "removeComments": true,
