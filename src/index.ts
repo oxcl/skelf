@@ -4,10 +4,10 @@ export interface IAbstractSpace {
   close : () => Promise<void>;
 }
 export interface IReadableSpace extends IAbstractSpace{
-  read  : (offset : Offset,size : Offset) => Promise<ArrayBuffer>;
+  read  : (size : Offset,offset? : Offset) => Promise<ArrayBuffer>;
 }
 export interface IWritableSpace extends IAbstractSpace {
-  write : (chunk : ArrayBuffer,offset : Offset) => Promise<number>
+  write : (chunk : ArrayBuffer,offset? : Offset) => Promise<number>
 }
 export interface ISpace extends IReadableSpace, IWritableSpace {}
 
