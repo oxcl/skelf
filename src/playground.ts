@@ -48,5 +48,5 @@ async function openFile(fileName : string) {
 //}
 //
 const space = await openFile("./test.txt");
-await space.write(SkelfBuffer.Wrap(new Uint8Array([1]).buffer,8),0)
+await space.write(SkelfBuffer.Wrap(new Uint8Array([1,2,3,4,5]).buffer,8),0)
 await space.close();
