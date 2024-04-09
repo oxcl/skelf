@@ -37,7 +37,8 @@
   "exports": {
     ".": "./dist/index.js",
     "./units": "./dist/units.js",
-    "./errors": "./dist/errors.js"
+    "./errors": "./dist/errors.js",
+    "./types": "./dist/types.js"
   },
   "devDependencies": {
     "@types/node": "^20.12.4",
