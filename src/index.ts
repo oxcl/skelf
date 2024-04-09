@@ -90,13 +90,36 @@ export class Space implements ISpace {
       `)
     this.#locked = true;
 
-    const totalBitsToOffset = offsetToBits(offset); // convert offset to bits
-    let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // calculate offset in whole bytes
-    const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover offset bits
+    const totalBitsToOffset = offsetToBits(offset);
+    let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8);
+    const leftoverBitsToOffset = totalBitsToOffset % 8;
+    const bytesToWrite = Math.floor((leftoverBitsToOffset + buffer.bitLength)/8);
 
     if(leftoverBitsToOffset === 0 && buffer.bitPadding === 0){
       await this._write(buffer,wholeBytesToOffset);
+      this.#locked = false;
+      return;
     }
+
+
+    const alignmentShift = leftoverBitsToOffset - buffer.bitPadding;
+    const alignedBufferSize = alignmentShift > 0 ? 1 : 0;
+    const alignedBuffer : ArrayBuffer = (buffer as any).transfer(buffer.byteLength + alignedBufferSize);
+    const uint8 = new Uint8Array(alignedBuffer);
+    shiftArrayByBits(uint8, alignmentShift);
+
+    if(leftoverBitsToOffset !== 0){
+      const headByte = new Uint8Array(await this._read(1,wholeBytesToOffset))[0]
+      uint8[uint8.byteLength-1] &= headByte | ((0xFF << (8-leftoverBitsToOffset)) & 0xFF);
+    }
+
+    if(alignmentShift !== 0){
+      const tailByte = new Uint8Array(await this._read(1,wholeBytesToOffset + alignedBuffer.byteLength-1))[0];
+      uint8[0] &= tailByte | (0xFF >> alignmentShift);
+    }
+
+    await this._write(alignedBuffer,wholeBytesToOffset);
+    this.#locked = false;
   }
 }
 

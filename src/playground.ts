@@ -19,7 +19,8 @@ async function openFile(fileName : string) {
       return uint8.buffer;
     },
     async write(buffer : ArrayBuffer, offset : number){
-      return;
+      const uint8 = new Uint8Array(buffer);
+      await file.write(uint8,0,offset);
     }
   })
 }
@@ -46,6 +47,6 @@ async function openFile(fileName : string) {
 //  }
 //}
 //
-//const space = await openFile("./test.txt")
-
-//await space.close()
+const space = await openFile("./test.txt");
+await space.write(SkelfBuffer.Wrap(new Uint8Array([1]).buffer,8),0)
+await space.close();
