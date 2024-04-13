@@ -10,31 +10,11 @@ import units from "skelf/units"
 // be byteLength*8
 
 // simple wrapper around ArrayBuffer to add bitLength.
-export class SkelfBuffer extends ArrayBuffer implements ISkelfBuffer{
+export class SkelfBuffer implements ISkelfBuffer{
   constructor(
-    size : any,
-    bitLength : number
-  ){
-    super(size);
-    this.#bitLength = bitLength;
-  }
-  #bitLength : number
-  get bitLength(){ return this.#bitLength };
-  get bitPadding(){ return this.byteLength*8 - this.#bitLength }
-
-  // wrap an ArrayBuffer inside a proxy and add a bitLength property to make it a SkelfBuffer.
-  static Wrap(rawBuffer : ArrayBuffer,bitLength : number){
-    return new Proxy(rawBuffer,{
-      get : (target,prop,reciever) => {
-        if(prop === "bitLength")
-          return bitLength;
-        else if(prop === "bitPadding")
-          return rawBuffer.byteLength*8 - bitLength;
-        else
-          return Reflect.get(target,prop,reciever);
-      }
-    }) as SkelfBuffer;
-  }
+    readonly buffer : ArrayBuffer,
+    readonly bitLength : number
+  ){}
 }
 
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
@@ -95,15 +75,16 @@ export class Space implements ISpace {
     const totalBitsToOffset = offsetToBits(offset); // convert offset to bits
     const wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // calculate offset in whole bytes
     const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover offset bits
+    // console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})
 
     const sizeInBits = offsetToBits(size); // convert size to bits
     const bytesToRead = Math.ceil((leftoverBitsToOffset + sizeInBits) / 8) // how many bytes can cover all bits
-
     const buffer = await this._read(bytesToRead,wholeBytesToOffset);
     const uint8 = new Uint8Array(buffer);
+    console.log({sizeInBits,bytesToRead,buffer})
 
-    // zero out the beginning of the last byte (most left byte) which doesn't include the desired bits
-    uint8[uint8.byteLength-1] &= 0xFF >> leftoverBitsToOffset
+    // zero out the beginning of the first (most left) which doesn't include the desired bits
+    uint8[0] &= 0xFF >> leftoverBitsToOffset
 
     // calculate how many bits should be shifted to the right
     const bitShift = (bytesToRead*8 - (leftoverBitsToOffset + sizeInBits)) % 8;
@@ -114,10 +95,10 @@ export class Space implements ISpace {
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
     if(bitShift + leftoverBitsToOffset >= 8){
-      return SkelfBuffer.Wrap(uint8.slice(1).buffer,sizeInBits);
+      return new SkelfBuffer(uint8.slice(1).buffer,sizeInBits);
     }
     else {
-      return SkelfBuffer.Wrap(buffer,sizeInBits);
+      return new SkelfBuffer(buffer,sizeInBits);
     }
   }
 
@@ -126,7 +107,7 @@ export class Space implements ISpace {
   // individual bits in our data to the space without loosing the rest of the bits in those bytes.
   // the buffer argument is assumed to be correctly padded so that leftover bits are stored on the most
   // significant bits of the last byte (most left).
-  async write(buffer : ISkelfBuffer,offset : Offset = 0){
+  async write(arrayBuffer : ISkelfBuffer | ArrayBuffer,offset : Offset = 0){
     if(this.locked)
       throw new LockedSpaceError(`
         trying to write to space '${this.name}' while it's locked. this could be caused by a not awaited
@@ -134,12 +115,17 @@ export class Space implements ISpace {
       `)
     this.#locked = true;
 
+    // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
+    // bitLength is assumed to be the length of the whole Array
+    const buffer    = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer              : arrayBuffer.buffer;
+    const bitLength = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer.byteLength*8 : arrayBuffer.bitLength;
+
     const totalBitsToOffset = offsetToBits(offset); // calculate offset size in bits
     let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // get offset in whole bytes
     const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover bits of the offset
 
     // if the operation is in whole bytes without any leftovers, just write the buffer to space and return
-    if(leftoverBitsToOffset === 0 && buffer.bitPadding === 0){
+    if(leftoverBitsToOffset === 0 && bitLength % 8 === 0){
       await this._write(buffer,wholeBytesToOffset);
       this.#locked = false;
       return;
@@ -148,27 +134,28 @@ export class Space implements ISpace {
     // the padding in the buffer argument and the padding that is required for the space (with the bit offset)
     // should be aligned so that if the write operation should begin from the nth bit of a byte in the space,
     // the buffer is padded with n empty bits to the right.
-    const alignmentShift = leftoverBitsToOffset - buffer.bitPadding;
+    const bitPadding = 8 - (bitLength % 8);
+    const alignmentShift = leftoverBitsToOffset - bitPadding;
 
     // if the buffer should be shifted to the right one extra byte should be added to the right of the buffer
     // so that bits are not lost due to overflowing
-    const expand = (alignmentShift > 0) ? 1 : 0;
+    const expand = (alignmentShift > 0) ? +1 : 0;
     const alignedBuffer = cloneBuffer(buffer,expand);
     const uint8 = new Uint8Array(alignedBuffer);
     shiftUint8ByBits(uint8, alignmentShift);
 
-    // merge the most left byte with the byte in the space if neccessary
+    // merge the first byte with the byte in the space if neccessary
     if(leftoverBitsToOffset !== 0){
-      const leftByte = new Uint8Array(await this._read(1,wholeBytesToOffset))[0];
-      uint8[uint8.byteLength-1] &= leftByte | (0xFF >> leftoverBitsToOffset);
+      const firstByte = new Uint8Array(await this._read(1,wholeBytesToOffset))[0];
+      uint8[0] &= firstByte | (0xFF >> leftoverBitsToOffset);
     }
 
-    // merge the most right byte with the byte in the space if neccessary
+    // merge the last byte with the byte in the space if neccessary
     if(alignmentShift !== 0){
-      // how many bits should be taken from the tail byte (most right byte) and merged with the our buffer
+      // how many bits should be taken from the last byte (most right byte) and merged with our buffer
       const tailSize = (8 - alignmentShift) % 8;
-      const rightByte = new Uint8Array(await this._read(1,wholeBytesToOffset + uint8.byteLength-1))[0];
-      uint8[0] &= rightByte | ((0xFF << alignmentShift) & 0xFF);
+      const lastByte = new Uint8Array(await this._read(1,wholeBytesToOffset + uint8.byteLength-1))[0];
+      uint8[uint8.byteLength-1] &= lastByte | ((0xFF << tailSize) & 0xFF);
     }
 
     await this._write(alignedBuffer,wholeBytesToOffset);
@@ -177,13 +164,10 @@ export class Space implements ISpace {
 }
 
 function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
-  // shift the bits into
+  if(shift === 0) return;
   let leftoverOfPrevByte = 0, leftoverOfThisByte = 0;
-  if(shift === 0) {
-    return;
-  }
-  else if(shift > 0){
-    for(let i = uint8.length-1;i >= 0; --i) {
+  if(shift > 0){
+    for(let i = 0;i < uint8.byteLength; i++) {
       // get the bits that will be cut from the right of the this byte to add them to the next byte later
       leftoverOfThisByte = (uint8[i] << (8-shift)) & 0xFF;
       // shift the byte by bit shift to the right
@@ -195,7 +179,7 @@ function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
   }
   else{
     shift = -shift;
-    for(let i = 0; i < uint8.length; i++){
+    for(let i = uint8.byteLength-1; i >= 0; --i){
       leftoverOfThisByte = uint8[i] >> (8-shift);
       uint8[i] <<= shift;
       uint8[i] |= leftoverOfPrevByte;
@@ -209,14 +193,14 @@ function cloneBuffer(buffer : ArrayBuffer,expand : number = 0){
   const lengthDouble = Math.floor(clonedBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
 
   const float64 = new Float64Array(buffer,0, lengthDouble)
-  const resultArray = new Float64Array(clonedBuffer, expand, lengthDouble);
+  const resultArray = new Float64Array(clonedBuffer,0, lengthDouble);
 
   for (let i = 0; i < resultArray.length; i++)
      resultArray[i] = float64[i];
 
   // copying over the remaining bytes
   const uint8 = new Uint8Array(buffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT)
-  const remainingArray = new Uint8Array(clonedBuffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT + expand);
+  const remainingArray = new Uint8Array(clonedBuffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT);
 
   for (let i = 0; i < remainingArray.length; i++)
      remainingArray[i] = uint8[i];

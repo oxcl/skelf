@@ -2,26 +2,27 @@ export interface ISpace {
   readonly locked : boolean;
   name  : string;
   close : () => Promise<void>;
-  read  : (size : Offset,offset? : Offset) => Promise<ArrayBuffer>;
+  read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer,offset? : Offset) => Promise<void>
+}
+
+export interface ISkelfBuffer {
+  readonly bitLength : number;
+  readonly buffer : ArrayBuffer;
 }
 
 export interface IAbstractStream {
   readonly locked : boolean;
   close : () => Promise<void>;
 }
+
 export interface IReadableStream extends IAbstractStream {
-  read  : (size : Offset) => Promise<ArrayBuffer>;
+  read  : (size : Offset) => Promise<ISkelfBuffer>;
 }
+
 export interface IWritableStream extends IAbstractStream {
-  write : (buffer : ArrayBuffer) => Promise<number>;
+  write : (buffer : ISkelfBuffer) => Promise<number>;
 }
-
-export interface ISkelfBuffer extends ArrayBuffer{
-  readonly bitLength  : number;
-  readonly bitPadding : number;
-};
-
 
 export interface ISkelf<T> {
   read  : (input : ISpace | IReadableStream,offset? : Offset) => Promise<T>;
