@@ -1,6 +1,7 @@
 export interface ISpace {
   readonly locked : boolean;
   name  : string;
+  init  : () => Promise<void>;
   close : () => Promise<void>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
@@ -33,6 +34,7 @@ export interface ISkelf<T> {
 
 export type SpaceConstructorOptions = {
   readonly name   : string;
+  readonly init?  : () => Promise<void>;
   readonly close? : () => Promise<void>;
   readonly read   : (size : number, offset : number) => Promise<ArrayBuffer>;
   readonly write  : (buffer : ArrayBuffer, offset : number) => Promise<void>;

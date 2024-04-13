@@ -1,4 +1,6 @@
 import {ISkelf,ISpace,Offset,IReadableStream,IWritableStream} from "skelf/types"
+import {BaseSpace} from "skelf/space"
+import * as fs from  "node:fs/promises"
 
 const skelf : ISkelf<number> = {
   async read(input : ISpace,offset : Offset = 0){
@@ -10,6 +12,20 @@ const skelf : ISkelf<number> = {
   }
 }
 
+class NodeFileSpace extends BaseSpace {
+  override readonly name : string;
+  file! : fs.FileHandle;
+  constructor(private readonly fileName : string){
+    super();
+    this.name = fileName;
+  };
+  async _init(){
+    this.file = await fs.open(this.fileName,"r+");
+  }
+  async _close(){
+    await this.file.close();
+  }
+}
 
 
 

@@ -12,22 +12,28 @@ export abstract class BaseSpace implements ISpace {
   abstract readonly name : string; // for debugging
 
   // when a space is locked read, write and close operations can't be executed because another operation is
-  // currently running.
+  // currently running or the space is not initialized yet.
   get locked(){ return this.#locked };
-  #locked : boolean = false;
+  #locked : boolean = true;
 
   // these functions should be provided by the creator of the class in the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away from the creator of the space
-  protected abstract readonly _close? : SpaceConstructorOptions['close'];
+  protected readonly _init?  : SpaceConstructorOptions['init'];
+  protected readonly _close? : SpaceConstructorOptions['close'];
   protected abstract readonly _read : SpaceConstructorOptions['read'];
   protected abstract readonly _write : SpaceConstructorOptions['write'];
+
+  async init(){
+    if(this._init) await this._init();
+    this.#locked = false;
+  }
 
   async close(){
     if(this.locked)
       throw new LockedSpaceError(`
         trying to close space '${this.name}' while it's locked. this could be caused by a not awaited call
-        to this method, which might be still pending.
+        to a read/write method, which might be still pending. or the space might not be initialized yet.
       `)
     if(this._close) await this._close();
   }
@@ -45,7 +51,7 @@ export abstract class BaseSpace implements ISpace {
     if(this.locked)
       throw new LockedSpaceError(`
         trying to read from space '${this.name}' while it's locked. this could be caused by a not awaited
-        call to this method, which might be still pending.
+        call to a read/write method, which might be still pending. or the space might not be initialized yet.
       `)
     this.#locked = true;
 
@@ -87,7 +93,7 @@ export abstract class BaseSpace implements ISpace {
     if(this.locked)
       throw new LockedSpaceError(`
         trying to write to space '${this.name}' while it's locked. this could be caused by a not awaited
-        call to this method, which might be still pending.
+        call to a read/write method, which might be still pending. or the space might not be initialized yet.
       `)
     this.#locked = true;
 
@@ -146,6 +152,7 @@ export abstract class BaseSpace implements ISpace {
 
 export class Space extends BaseSpace {
   readonly name : string;
+  protected override readonly _init? : SpaceConstructorOptions['init'];
   protected override readonly _close? : SpaceConstructorOptions['close'];
   protected override readonly _read : SpaceConstructorOptions['read'];
   protected override readonly _write : SpaceConstructorOptions['write'];
@@ -153,6 +160,7 @@ export class Space extends BaseSpace {
   constructor(options : SpaceConstructorOptions){
     super();
     this.name = options.name;
+    this._init = options.init;
     this._close = options.close;
     this._read = options.read;
     this._write = options.write;
