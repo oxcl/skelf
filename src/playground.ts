@@ -20,32 +20,12 @@ async function openFile(fileName : string) {
     },
     async write(buffer : ArrayBuffer, offset : number){
       const uint8 = new Uint8Array(buffer);
-      await file.write(uint8,0,offset);
+      await file.write(uint8,0,uint8.length,offset);
     }
   })
 }
-//    async write(chunk : ArrayBuffer, offset : Offset = 0){
-//      if(this.locked)
-//        throw new LockedSpaceError(`
-//          trying to write to space '${this.name}' while it's locked. this could be caused by a not awaited call
-//          to this method, which might be still pending.
-//        `)
-//      this.#locked = true;
-//      const totalBitsToOffset = offsetToBits(offset); // convert offset to bits;
-//      const wholeBytesToOffset = Math.floor(totalBitsToOffset); // calculate offset in whole byte
-//      const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover offset bits
-//
-//      // since you can't write from the middle of a byte, if the offset has bit leftovers then we have to first
-//      // read the byte in the middle to add the bits that we want to it while keeping the previous bits.
-//      if(leftoverBitsToOffset !== 0){
-//        this.#locked = false;
-//        const middleByte = (await this.read(1,wholeBytesToOffset))[0];
-//
-//        this.#locked = true;
-//      }
-//    }
-//  }
-//}
+
 const space = await openFile("./test.txt");
-console.log(await space.read("12b","4b"))
+const uint8 = new Uint8Array(2);
+await space.write(new SkelfBuffer(uint8.buffer,"2B"),"4b");
 await space.close();

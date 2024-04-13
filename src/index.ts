@@ -11,10 +11,13 @@ import units from "skelf/units"
 
 // simple wrapper around ArrayBuffer to add bitLength.
 export class SkelfBuffer implements ISkelfBuffer{
+  readonly bitLength : number;
   constructor(
     readonly buffer : ArrayBuffer,
-    readonly bitLength : number
-  ){}
+    offset : Offset
+  ){
+    this.bitLength = offsetToBits(offset);
+  }
 }
 
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
@@ -81,7 +84,6 @@ export class Space implements ISpace {
     const bytesToRead = Math.ceil((leftoverBitsToOffset + sizeInBits) / 8) // how many bytes can cover all bits
     const buffer = await this._read(bytesToRead,wholeBytesToOffset);
     const uint8 = new Uint8Array(buffer);
-    console.log({sizeInBits,bytesToRead,buffer})
 
     // zero out the beginning of the first (most left) which doesn't include the desired bits
     uint8[0] &= 0xFF >> leftoverBitsToOffset
@@ -119,10 +121,12 @@ export class Space implements ISpace {
     // bitLength is assumed to be the length of the whole Array
     const buffer    = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer              : arrayBuffer.buffer;
     const bitLength = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer.byteLength*8 : arrayBuffer.bitLength;
+    //console.log({bitLength,buffer})
 
     const totalBitsToOffset = offsetToBits(offset); // calculate offset size in bits
     let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // get offset in whole bytes
     const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover bits of the offset
+    //console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})
 
     // if the operation is in whole bytes without any leftovers, just write the buffer to space and return
     if(leftoverBitsToOffset === 0 && bitLength % 8 === 0){
@@ -134,8 +138,9 @@ export class Space implements ISpace {
     // the padding in the buffer argument and the padding that is required for the space (with the bit offset)
     // should be aligned so that if the write operation should begin from the nth bit of a byte in the space,
     // the buffer is padded with n empty bits to the right.
-    const bitPadding = 8 - (bitLength % 8);
+    const bitPadding = (buffer.byteLength*8 - bitLength) % 8;
     const alignmentShift = leftoverBitsToOffset - bitPadding;
+    //console.log({bitPadding,alignmentShift})
 
     // if the buffer should be shifted to the right one extra byte should be added to the right of the buffer
     // so that bits are not lost due to overflowing
@@ -143,11 +148,13 @@ export class Space implements ISpace {
     const alignedBuffer = cloneBuffer(buffer,expand);
     const uint8 = new Uint8Array(alignedBuffer);
     shiftUint8ByBits(uint8, alignmentShift);
+    //console.log({expand,uint8})
 
     // merge the first byte with the byte in the space if neccessary
     if(leftoverBitsToOffset !== 0){
       const firstByte = new Uint8Array(await this._read(1,wholeBytesToOffset))[0];
-      uint8[0] &= firstByte | (0xFF >> leftoverBitsToOffset);
+      uint8[0] = mergeBytes(firstByte,uint8[0],leftoverBitsToOffset);
+      //console.log({firstByte,uint8})
     }
 
     // merge the last byte with the byte in the space if neccessary
@@ -155,9 +162,8 @@ export class Space implements ISpace {
       // how many bits should be taken from the last byte (most right byte) and merged with our buffer
       const tailSize = (8 - alignmentShift) % 8;
       const lastByte = new Uint8Array(await this._read(1,wholeBytesToOffset + uint8.byteLength-1))[0];
-      uint8[uint8.byteLength-1] &= lastByte | ((0xFF << tailSize) & 0xFF);
+      uint8[uint8.byteLength-1] = mergeBytes(uint8[uint8.byteLength-1],lastByte,8 - tailSize);
     }
-
     await this._write(alignedBuffer,wholeBytesToOffset);
     this.#locked = false;
   }
@@ -186,6 +192,11 @@ function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
       leftoverOfPrevByte = leftoverOfThisByte;
     }
   }
+}
+
+// merge two bytes into one based by defining the bit size of the head
+function mergeBytes(headByte : number,tailByte : number,headSize : number){
+  return (headByte >> (8-headSize) << (8-headSize)) | (((tailByte << headSize) & 0xFF) >> headSize)
 }
 
 function cloneBuffer(buffer : ArrayBuffer,expand : number = 0){
@@ -240,8 +251,10 @@ export function parseOffsetString(offsetString : string){
   case "Killobytes": case "killobytes": case "KilloBytes": case "killoBytes":
     return {amount, unit: units.killobyte};
   default:
-    throw new InvalidOffsetError(`unable to parse unknown unit '${unitString}' in offset string
-                                 '${offsetString}' with amount being: ${amount}.`);
+    throw new InvalidOffsetError(`
+      unable to parse unknown unit '${unitString}' in offset string
+      '${offsetString}' with amount being: ${amount}.`
+    );
   }
 }
 
