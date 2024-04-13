@@ -29,7 +29,7 @@ export interface ISkelf<T> {
   write : (value : T,output : ISpace | IWritableStream, offset? : Offset) => Promise<number>;
 }
 
-export type SpaceConstructorArguments = {
+export type SpaceConstructorOptions = {
   readonly name   : string;
   readonly close? : () => Promise<void>;
   readonly read   : (size : number, offset : number) => Promise<ArrayBuffer>;

@@ -1,4 +1,4 @@
-import {ISpace,ISkelfBuffer,SpaceConstructorArguments,Offset} from "skelf/types"
+import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
 import {LockedSpaceError,InvalidSpaceOptionsError} from "skelf/errors"
 import {SkelfBuffer,offsetToBits,shiftUint8ByBits,mergeBytes,cloneBuffer} from "./utils.js"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
@@ -8,8 +8,8 @@ import {SkelfBuffer,offsetToBits,shiftUint8ByBits,mergeBytes,cloneBuffer} from "
 // with bits
 
 // an implementation of the ISpace interface to abstract some common operations away.
-export class Space implements ISpace {
-  readonly name : string; // for debugging
+export abstract class BaseSpace implements ISpace {
+  abstract readonly name : string; // for debugging
 
   // when a space is locked read, write and close operations can't be executed because another operation is
   // currently running.
@@ -19,16 +19,9 @@ export class Space implements ISpace {
   // these functions should be provided by the creator of the class in the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away from the creator of the space
-  private readonly _close? : SpaceConstructorArguments['close'];
-  private readonly _read : SpaceConstructorArguments['read'];
-  private readonly _write : SpaceConstructorArguments['write'];
-
-  constructor(options : SpaceConstructorArguments){
-    this.name = options.name;
-    this._close = options.close;
-    this._read = options.read;
-    this._write = options.write;
-  }
+  protected abstract readonly _close? : SpaceConstructorOptions['close'];
+  protected abstract readonly _read : SpaceConstructorOptions['read'];
+  protected abstract readonly _write : SpaceConstructorOptions['write'];
 
   async close(){
     if(this.locked)
@@ -147,6 +140,22 @@ export class Space implements ISpace {
     }
     await this._write(alignedBuffer,wholeBytesToOffset);
     this.#locked = false;
+  }
+
+}
+
+export class Space extends BaseSpace {
+  readonly name : string;
+  protected override readonly _close? : SpaceConstructorOptions['close'];
+  protected override readonly _read : SpaceConstructorOptions['read'];
+  protected override readonly _write : SpaceConstructorOptions['write'];
+
+  constructor(options : SpaceConstructorOptions){
+    super();
+    this.name = options.name;
+    this._close = options.close;
+    this._read = options.read;
+    this._write = options.write;
   }
 }
 
