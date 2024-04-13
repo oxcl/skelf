@@ -10,7 +10,7 @@ export const Kb        = killobit;
 export const killobyte = 1024 * 8;
 export const KB        = killobyte;
 
-export const unit = {
+export const units = {
   bit,
   b,
   byte,
@@ -21,6 +21,4 @@ export const unit = {
   KB,
 } as const;
 
-
-
-export default unit
+export default units
