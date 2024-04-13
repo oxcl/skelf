@@ -3,7 +3,7 @@ export interface ISpace {
   name  : string;
   close : () => Promise<void>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
-  write : (buffer : ISkelfBuffer,offset? : Offset) => Promise<void>
+  write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
 
 export interface ISkelfBuffer {
@@ -11,22 +11,24 @@ export interface ISkelfBuffer {
   readonly buffer : ArrayBuffer;
 }
 
-export interface IAbstractStream {
+export interface IReadableStream {
   readonly locked : boolean;
+  read  : (size : Offset) => Promise<ISkelfBuffer>;
   close : () => Promise<void>;
 }
 
-export interface IReadableStream extends IAbstractStream {
-  read  : (size : Offset) => Promise<ISkelfBuffer>;
+export interface IWritableStream {
+  readonly locked : boolean;
+  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
+  close : () => Promise<void>;
 }
 
-export interface IWritableStream extends IAbstractStream {
-  write : (buffer : ISkelfBuffer) => Promise<number>;
-}
+export type SkelfInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer;
+export type SkelfOutput = ISpace | IWritableStream;
 
 export interface ISkelf<T> {
-  read  : (input : ISpace | IReadableStream,offset? : Offset) => Promise<T>;
-  write : (value : T,output : ISpace | IWritableStream, offset? : Offset) => Promise<number>;
+  read  : (input : ISpace,offset? : Offset) => Promise<T>;
+  write : (value : T,output : ISpace, offset? : Offset) => Promise<void>;
 }
 
 export type SpaceConstructorOptions = {
