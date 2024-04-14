@@ -1,5 +1,3 @@
-import {ISkelfBuffer,Offset} from "skelf/types"
-import {InvalidOffsetError} from "skelf/errors"
 import units from "skelf/units"
 // shift a Uint8Array object by bits
 export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
@@ -27,11 +25,6 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
   }
 }
 
-// merge two bytes into one based by defining the bit size of the head
-export function mergeBytes(headByte : number,tailByte : number,headSize : number){
-  return (headByte >> (8-headSize) << (8-headSize)) | (((tailByte << headSize) & 0xFF) >> headSize)
-}
-
 // copy a buffer into new buffer with optional expanded space at the end
 export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0){
   const clonedBuffer = new ArrayBuffer(buffer.byteLength + expand);
@@ -51,60 +44,4 @@ export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0){
      remainingArray[i] = uint8[i];
 
   return clonedBuffer;
-}
-
-// convert offset values to bits
-export function offsetToBits(offset : Offset){
-  if(typeof offset === "number"){
-    return offset * 8;
-  }
-  if(typeof offset === "string"){
-    const parsedOffset = parseOffsetString(offset);
-    return parsedOffset.amount * parsedOffset.unit;
-  }
-  if(Array.isArray(offset)){
-    return offset[0] * offset[1];
-  }
-  return offset.amount * offset.unit;
-}
-
-// parse strings as offset values containing amount+unit values
-export function parseOffsetString(offsetString : string){
-  const amount = Number.parseInt(offsetString);
-  if(Number.isNaN(amount))
-    throw new InvalidOffsetError(`failed to parse the amount portion of the offset string '${offsetString}'.`);
-
-  const unitString = offsetString.slice(offsetString.search(/[A-Za-z]/));
-  switch(unitString){
-  case "b": case "bit": case "bits":
-    return {amount, unit: units.bit};
-  case "B": case "Byte": case "Bytes":
-    return {amount, unit: units.byte};
-  case "Kb": case "kb": case "Killobit": case "killobit": case "KilloBit": case "killoBit": case "Killobits":
-  case "killobits": case "KilloBits": case "killoBits":
-    return {amount, unit: units.killobit};
-  case "KB": case "kB": case "Killobyte": case "killobyte": case "KilloByte": case "killoByte":
-  case "Killobytes": case "killobytes": case "KilloBytes": case "killoBytes":
-    return {amount, unit: units.killobyte};
-  default:
-    throw new InvalidOffsetError(`
-      unable to parse unknown unit '${unitString}' in offset string
-      '${offsetString}' with amount being: ${amount}.`
-    );
-  }
-}
-
-// since ArrayBuffers don't have the capability to work with bits, SkelfBuffer is a simple wrapper around
-// ArrayBuffer class which adds the size of the buffer in bits using the bitLength property. when the data is
-// less than 8 bits or has some leftover bits in the beginning this data is useful to know what is the actual
-// size of the data that is being used
-// with functions that accept both SkelfBuffer nad ArrayBuffer, the bitLength of the ArrayBuffer is assumed to
-// be byteLength*8
-
-// simple wrapper around ArrayBuffer to add bitLength.
-export class SkelfBuffer implements ISkelfBuffer{
-  constructor(
-    readonly buffer : ArrayBuffer,
-    readonly bitLength : number
-  ){}
 }

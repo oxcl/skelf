@@ -1,6 +1,8 @@
 import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
-import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError} from "skelf/errors"
-import {SkelfBuffer,offsetToBits,shiftUint8ByBits,mergeBytes,cloneBuffer} from "./utils.js"
+import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
+import {shiftUint8ByBits,cloneBuffer} from "./utils.js"
+import {mergeBytes,offsetToBits} from "#utils"
+import SkelfBuffer from "skelf/buffer"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
@@ -34,10 +36,8 @@ export abstract class BaseSpace implements ISpace {
   protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<void>;
 
   async init(){
-    if(this.#ready)
-      throw new SpaceInitializedTwiceError(`
-        space '${this.name} is already initialized.'
-      `);
+    if(this.ready)
+      throw new SpaceInitializedTwiceError(`initializing stream '${this.name} while already initialized.'`);
     if(this._init) await this._init();
     this.#ready = true;
   }
