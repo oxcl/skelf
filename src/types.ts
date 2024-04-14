@@ -1,31 +1,31 @@
-export interface ISpace {
+interface IAbstractSpaceOrStream {
   readonly locked : boolean;
+  readonly ready  : boolean;
+  readonly closed : boolean;
   name  : string;
   init  : () => Promise<void>;
   close : () => Promise<void>;
+}
+export interface ISpace extends IAbstractSpaceOrStream {
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
+
+export interface IReadableStream extends IAbstractSpaceOrStream {
+  read  : (size : Offset) => Promise<ISkelfBuffer>;
+}
+export interface IWritableStream extends IAbstractSpaceOrStream {
+  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
+}
+
+export type SkelfInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Blob;
+export type SkelfOutput = ISpace | IWritableStream;
 
 export interface ISkelfBuffer {
   readonly bitLength : number;
   readonly buffer : ArrayBuffer;
 }
 
-export interface IReadableStream {
-  readonly locked : boolean;
-  read  : (size : Offset) => Promise<ISkelfBuffer>;
-  close : () => Promise<void>;
-}
-
-export interface IWritableStream {
-  readonly locked : boolean;
-  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
-  close : () => Promise<void>;
-}
-
-export type SkelfInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer;
-export type SkelfOutput = ISpace | IWritableStream;
 
 export interface IStruct<T> {
   read  : (input : ISpace,offset? : Offset) => Promise<T>;

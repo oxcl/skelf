@@ -1,5 +1,5 @@
 import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
-import {LockedSpaceError,InvalidSpaceOptionsError} from "skelf/errors"
+import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError} from "skelf/errors"
 import {SkelfBuffer,offsetToBits,shiftUint8ByBits,mergeBytes,cloneBuffer} from "./utils.js"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
@@ -12,9 +12,18 @@ export abstract class BaseSpace implements ISpace {
   abstract readonly name : string; // for debugging
 
   // when a space is locked read, write and close operations can't be executed because another operation is
-  // currently running or the space is not initialized yet.
+  // currently running.
   get locked(){ return this.#locked };
-  #locked : boolean = true;
+  #locked : boolean = false;
+
+  // a space is not ready when a space is not initialized using the init method. or the initialization process
+  // has not yet finished running
+  get ready(){ return this.#ready};
+  #ready : boolean = false;
+
+  // a space is identified as closed when the its close method is called
+  get closed(){ return this.#closed };
+  #closed : boolean = false;
 
   // these functions should be provided by the creator of the class in the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
@@ -25,17 +34,29 @@ export abstract class BaseSpace implements ISpace {
   protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<void>;
 
   async init(){
+    if(this.#ready)
+      throw new SpaceInitializedTwiceError(`
+        space '${this.name} is already initialized.'
+      `);
     if(this._init) await this._init();
-    this.#locked = false;
+    this.#ready = true;
   }
 
   async close(){
     if(this.locked)
       throw new LockedSpaceError(`
         trying to close space '${this.name}' while it's locked. this could be caused by a not awaited call
-        to a read/write method, which might be still pending. or the space might not be initialized yet.
+        to a read/write method, which might be still pending.
       `)
+    if(!this.ready)
+      throw new SpaceIsNotReadyError(`
+        trying to close space '${this.name}' while it's not initialized. spaces should be first initialized
+        with the init method before using them. this could be caused by a not awaited call to the init method.
+      `)
+    if(this.closed)
+      throw new SpaceIsClosedError(`trying to close space '${this.name}' while it's already closed.`)
     if(this._close) await this._close();
+    this.#closed = true;
   }
 
   // when reading from a space if the data is either less that 8 bits or has bit leftovers (isn't whole byte),
@@ -51,8 +72,15 @@ export abstract class BaseSpace implements ISpace {
     if(this.locked)
       throw new LockedSpaceError(`
         trying to read from space '${this.name}' while it's locked. this could be caused by a not awaited
-        call to a read/write method, which might be still pending. or the space might not be initialized yet.
+        call to a read/write method, which might be still pending.
       `)
+    if(!this.ready)
+      throw new SpaceIsNotReadyError(`
+        trying to read from space '${this.name}' while it's not initialized. spaces should be first initialized
+        with the init method before using them. this could be caused by a not awaited call to the init method.
+      `)
+    if(this.closed)
+      throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
     const totalBitsToOffset = offsetToBits(offset); // convert offset to bits
@@ -93,8 +121,15 @@ export abstract class BaseSpace implements ISpace {
     if(this.locked)
       throw new LockedSpaceError(`
         trying to write to space '${this.name}' while it's locked. this could be caused by a not awaited
-        call to a read/write method, which might be still pending. or the space might not be initialized yet.
+        call to a read/write method, which might be still pending.
       `)
+    if(!this.ready)
+      throw new SpaceIsNotReadyError(`
+        trying to write to space '${this.name}' while it's not initialized. spaces should be first initialized
+        with the init method before using them. this could be caused by a not awaited call to the init method.
+      `)
+    if(this.closed)
+      throw new SpaceIsClosedError(`trying to write to space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
