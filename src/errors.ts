@@ -40,3 +40,6 @@ export class StreamIsNotReadyError extends SkelfError {
 export class StreamIsClosedError extends SkelfError {
   override name = "STREAM_IS_CLOSED_ERROR";
 }
+export class EndOfStreamError extends SkelfError {
+  override name = "END_OF_STREAM_ERROR";
+}

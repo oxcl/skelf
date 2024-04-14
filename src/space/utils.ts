@@ -1,4 +1,3 @@
-import units from "skelf/units"
 // shift a Uint8Array object by bits
 export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
   if(shift === 0) return;
@@ -23,25 +22,4 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
       leftoverOfPrevByte = leftoverOfThisByte;
     }
   }
-}
-
-// copy a buffer into new buffer with optional expanded space at the end
-export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0){
-  const clonedBuffer = new ArrayBuffer(buffer.byteLength + expand);
-  const lengthDouble = Math.floor(clonedBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
-
-  const float64 = new Float64Array(buffer,0, lengthDouble)
-  const resultArray = new Float64Array(clonedBuffer,0, lengthDouble);
-
-  for (let i = 0; i < resultArray.length; i++)
-     resultArray[i] = float64[i];
-
-  // copying over the remaining bytes
-  const uint8 = new Uint8Array(buffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT)
-  const remainingArray = new Uint8Array(clonedBuffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT);
-
-  for (let i = 0; i < remainingArray.length; i++)
-     remainingArray[i] = uint8[i];
-
-  return clonedBuffer;
 }

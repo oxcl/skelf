@@ -13,6 +13,7 @@ export interface ISpace extends IAbstractSpaceOrStream {
 
 export interface IReadableStream extends IAbstractSpaceOrStream {
   read  : (size : Offset) => Promise<ISkelfBuffer>;
+  skip  : (size : Offset) => Promise<void>;
 }
 export interface IWritableStream extends IAbstractSpaceOrStream {
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
