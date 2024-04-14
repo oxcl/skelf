@@ -27,7 +27,7 @@ export interface IWritableStream {
 export type SkelfInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer;
 export type SkelfOutput = ISpace | IWritableStream;
 
-export interface ISkelf<T> {
+export interface IStruct<T> {
   read  : (input : ISpace,offset? : Offset) => Promise<T>;
   write : (value : T,output : ISpace, offset? : Offset) => Promise<void>;
 }

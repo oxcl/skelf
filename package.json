@@ -39,7 +39,8 @@
     "./units": "./dist/units.js",
     "./errors": "./dist/errors.js",
     "./types": "./dist/types.js",
-    "./space": "./dist/space/index.js"
+    "./space": "./dist/space/index.js",
+    "./space/node": "./dist/space/node/index.js"
   },
   "devDependencies": {
     "@types/node": "^20.12.4",

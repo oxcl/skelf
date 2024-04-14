@@ -19,10 +19,10 @@ export abstract class BaseSpace implements ISpace {
   // these functions should be provided by the creator of the class in the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away from the creator of the space
-  protected readonly _init?  : SpaceConstructorOptions['init'];
-  protected readonly _close? : SpaceConstructorOptions['close'];
-  protected abstract readonly _read : SpaceConstructorOptions['read'];
-  protected abstract readonly _write : SpaceConstructorOptions['write'];
+  protected async _init()  : Promise<void>{};
+  protected async _close() : Promise<void>{};
+  protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer>;
+  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<void>;
 
   async init(){
     if(this._init) await this._init();
@@ -147,23 +147,34 @@ export abstract class BaseSpace implements ISpace {
     await this._write(alignedBuffer,wholeBytesToOffset);
     this.#locked = false;
   }
-
 }
 
 export class Space extends BaseSpace {
   readonly name : string;
-  protected override readonly _init? : SpaceConstructorOptions['init'];
-  protected override readonly _close? : SpaceConstructorOptions['close'];
-  protected override readonly _read : SpaceConstructorOptions['read'];
-  protected override readonly _write : SpaceConstructorOptions['write'];
+  private readonly options : SpaceConstructorOptions;
+  protected override async _init(){
+    if(this.options.init) return this.options.init();
+  };
+  protected override async _close(){
+    if(this.options.close) return this.options.close();
+  }
+  protected override async _read(size : number, offset : number){
+    return this.options.read(size,offset)
+  };
+  protected override async _write(buffer : ArrayBuffer, offset : number){
+    return this.options.write(buffer, offset);
+  }
 
   constructor(options : SpaceConstructorOptions){
     super();
     this.name = options.name;
-    this._init = options.init;
-    this._close = options.close;
-    this._read = options.read;
-    this._write = options.write;
+    this.options = options;
+  }
+  // create a new space object and initialize it so that it's ready to use
+  static async create(options : SpaceConstructorOptions){
+    const newSpace = new Space(options);
+    await newSpace.init();
+    return newSpace;
   }
 }
 

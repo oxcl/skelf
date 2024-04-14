@@ -103,11 +103,8 @@ export function parseOffsetString(offsetString : string){
 
 // simple wrapper around ArrayBuffer to add bitLength.
 export class SkelfBuffer implements ISkelfBuffer{
-  readonly bitLength : number;
   constructor(
     readonly buffer : ArrayBuffer,
-    offset : Offset
-  ){
-    this.bitLength = offsetToBits(offset);
-  }
+    readonly bitLength : number
+  ){}
 }
