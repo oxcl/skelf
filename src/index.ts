@@ -35,6 +35,8 @@ export abstract class BaseReadableStream implements IReadableStream {
     if(this.ready)
       throw new StreamInitializedTwiceError(`initializing stream '${this.name}' while already initialized.`);
     await this._init();
+    this.#ready = true;
+    return this;
   }
 
   async close(){
@@ -146,7 +148,6 @@ export class ReadableStream extends BaseReadableStream {
   protected override async _read(size : number){
     return this.options.read(size);
   };
-
 
   constructor(options : ReadableStreamConstructorOptions){
     super();

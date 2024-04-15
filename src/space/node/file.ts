@@ -3,7 +3,7 @@ import * as fs from  "node:fs/promises"
 
 export class NodeFileSpace extends BaseSpace {
   override readonly name : string;
-  file! : fs.FileHandle;
+  private file! : fs.FileHandle;
   constructor(private readonly fileName : string){
     super();
     this.name = fileName;

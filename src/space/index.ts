@@ -38,6 +38,7 @@ export abstract class BaseSpace implements ISpace {
       throw new SpaceInitializedTwiceError(`initializing stream '${this.name} while already initialized.'`);
     if(this._init) await this._init();
     this.#ready = true;
+    return this;
   }
 
   async close(){
@@ -185,7 +186,7 @@ export class Space extends BaseSpace {
   readonly name : string;
   private readonly options : SpaceConstructorOptions;
   protected override async _init(){
-    if(this.options.init) return this.options.init();
+    if(this.options.init) this.options.init();
   };
   protected override async _close(){
     if(this.options.close) return this.options.close();

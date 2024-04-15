@@ -6,19 +6,21 @@ interface IAbstractSpaceOrStream {
   readonly ready  : boolean;
   readonly closed : boolean;
   name  : string;
-  init  : () => Promise<void>;
   close : () => Promise<void>;
 }
 export interface ISpace extends IAbstractSpaceOrStream {
+  init  : () => Promise<ISpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
 
 export interface IReadableStream extends IAbstractSpaceOrStream {
+  init  : () => Promise<IReadableStream>;
   read  : (size : Offset) => Promise<ISkelfBuffer>;
   skip  : (size : Offset) => Promise<void>;
 }
 export interface IWritableStream extends IAbstractSpaceOrStream {
+  init  : () => Promise<IWritableStream>;
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
 }
 
