@@ -1,4 +1,4 @@
-import {Offset,SkelfBuffer,Space} from "skelf"
+import {Offset,Space} from "skelf"
 import {NodeFileSpace} from "skelf/space/node"
 import units from "skelf/units"
 import {InvalidOffsetError,LockedSpaceError} from "skelf/errors"

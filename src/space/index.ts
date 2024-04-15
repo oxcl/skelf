@@ -1,7 +1,6 @@
 import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
 import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
-import {shiftUint8ByBits,cloneBuffer} from "./utils.js"
-import {mergeBytes,offsetToBits,convertToSkelfBuffer} from "#utils"
+import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "#utils"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
@@ -26,9 +25,9 @@ export abstract class BaseSpace implements ISpace {
   get closed(){ return this.#closed };
   #closed : boolean = false;
 
-  // these functions should be provided by the creator of the class in the constructor (or a child class)
+  // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
-  // abstracted away from the creator of the space
+  // abstracted away for the creator of the space
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
   protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer>;
@@ -116,7 +115,7 @@ export abstract class BaseSpace implements ISpace {
   // individual bits in our data to the space without loosing the rest of the bits in those bytes.
   // the buffer argument is assumed to be correctly padded so that leftover bits are stored on the most
   // significant bits of the last byte (most left).
-  async write(arrayBuffer : ISkelfBuffer | ArrayBuffer,offset : Offset = 0){
+  async write(buffer : ISkelfBuffer | ArrayBuffer,offset : Offset = 0){
     if(this.locked)
       throw new LockedSpaceError(`
         trying to write to space '${this.name}' while it's locked. this could be caused by a not awaited
@@ -133,8 +132,7 @@ export abstract class BaseSpace implements ISpace {
 
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
     // bitLength is assumed to be the length of the whole Array
-    const buffer    = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer              : arrayBuffer.buffer;
-    const bitLength = (arrayBuffer instanceof ArrayBuffer) ? arrayBuffer.byteLength*8 : arrayBuffer.bitLength;
+    const bitLength = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
     //console.log({bitLength,buffer})
 
     const totalBitsToOffset = offsetToBits(offset); // calculate offset size in bits

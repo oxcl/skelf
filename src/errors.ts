@@ -8,6 +8,10 @@ export abstract class SkelfError extends Error {
   }
 }
 
+export class InvalidArgumentError extends SkelfError {
+  override name = "INVALID_ARGUMENT_ERROR";
+}
+
 export class InvalidOffsetError extends SkelfError {
   override name = "INVALID_OFFSET_ERROR"
 }

@@ -18,6 +18,16 @@ abstract class BaseReadableStream implements IReadableStream {
 
   private cacheByte : number = 0;
   private cacheSize : number = 0;
+
+
+  // these functions should be provided by the creator of the object to the constructor (or a child class)
+  // the arguments for these functions only accept whole byte values so all the logic for working with bits is
+  // abstracted away for the creator of the stream
+  protected async _init()  : Promise<void>{};
+  protected async _close() : Promise<void>{};
+  protected abstract _skip(size : number) : Promise<boolean>;
+  protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
+
   async init(){
     if(this.ready)
       throw new StreamInitializedTwiceError(`initializing stream '${this.name}' while already initialized.`);
@@ -41,7 +51,10 @@ abstract class BaseReadableStream implements IReadableStream {
     this.#closed = true;
   }
 
-  read(size : Offset){
+  async skip(size : Offset){
+    // TODO
+  }
+  async read(size : Offset){
     if(this.locked)
       throw new LockedStreamError(`
         trying to read from stream '${this.name}' while it's locked. this could be caused by a not awaited call
@@ -59,18 +72,23 @@ abstract class BaseReadableStream implements IReadableStream {
     const sizeInBits = offsetToBits(size);
     if(size === 0){
       this.#locked = false;
-      return cnvertToSkelfBuffer(new ArrayBuffer(0),0);
+      return convertToSkelfBuffer(new ArrayBuffer(0),0);
     }
 
+    const sizeInBytes = Math.ceil(sizeInBits / 8);
+    const bytesToRead = Math.ceil(sizeInBits - this.cacheSize);
+    const buffer = await this._read(bytesToRead);
+    if(!buffer)
+      throw new EndOfStreamError(`
+        stream '${this.name}' reached end its while trying to read ${bytesToRead} bytes from it.
+      `);
+
     if(this.cacheSize === 0){
-      const sizeInBytes = Math.ceil(size / 8);
       if(sizeInBits % 8 === 0){
-        const buffer = await this._read(sizeInBytes);
         this.#locked = false;
         return convertToSkelfBuffer(buffer,sizeInBits);
       }
       else {
-        const buffer = await this._read(sizeInBytes);
         const uint8 = new Uint8Array(buffer);
         this.cacheSize = sizeInBytes*8 - sizeInBits;
         this.cacheByte = mergeBytes(0x00,uint8[uint8.byteLength-1],8-this.cacheSize);
@@ -82,7 +100,7 @@ abstract class BaseReadableStream implements IReadableStream {
     else {
       if(sizeInBits <= this.cacheSize){
         const uint8 = new Uint8Array([
-          this.cacheByte >> (this.cacheSize - sizeInBits);
+          this.cacheByte >> (this.cacheSize - sizeInBits)
         ]);
         this.cacheSize -= sizeInBits;
         this.cacheByte &= 0xFF >> 8-this.cacheSize;
@@ -90,15 +108,13 @@ abstract class BaseReadableStream implements IReadableStream {
         return convertToSkelfBuffer(uint8.buffer,sizeInBits);
       }
       else {
-        const bytesToRead = Math.ceil(sizeInBits - this.cacheSize);
-        const buffer = await this._read(sizeInBytes);
-        const alignedBuffer = ( sizeInBytes === bytesToRead ) ? buffer : cloneBuffer(buffer,1,1);
+        const alignedBuffer = (sizeInBytes === bytesToRead) ? buffer : cloneBuffer(buffer,1,1);
         const uint8 = new Uint8Array(alignedBuffer);
         const newCacheSize = this.cacheSize + bytesToRead*8 - sizeInBits;
         const newCacheByte = uint8[uint8.byteLength-1] & (0xFF >> (8-newCacheSize));
         shiftUint8ByBits(uint8,newCacheSize);
         // inject the cached bits into the new aligned buffer
-        const injectionPosition = (size - cache) % 8;
+        const injectionPosition = (sizeInBits - this.cacheSize) % 8;
         uint8[0] = mergeBytes((this.cacheByte << injectionPosition) & 0xFF,uint8[0],8-injectionPosition);
         if(this.cacheSize > newCacheSize){
           // some of the cached bits should be injected into the second byte of the buffer

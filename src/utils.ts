@@ -1,5 +1,5 @@
 import {ISkelfBuffer,Offset} from "skelf/types"
-import {InvalidOffsetError} from "skelf/errors"
+import {InvalidOffsetError,SkelfError,InvalidArgumentError} from "skelf/errors"
 import units from "skelf/units"
 
 // merge two bytes into one based by defining the bit size of the head
@@ -63,7 +63,7 @@ export function offsetToString(offset : Offset){
     return `${offset}B`
   else if(Array.isArray(offset))
     return `[${offset[0]} x ${offset[1]}]b`
-  else if(typeof offset === "object" && "amount" in offset && unit in offset){
+  else if(typeof offset === "object" && "amount" in offset && "unit" in offset){
     return `${offset.amount}${offsetUnitToString(offset.unit)}`
   }
   else if(typeof offset === "string")
@@ -101,7 +101,7 @@ export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0,offset : nu
 // shift a Uint8Array object by bits
 export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
   if(shift > 8 || shift < -8)
-    throw new SkelfError(`
+    throw new InvalidArgumentError(`
       shifting a uint8Array by more than 8 bits is not possible. shift: ${shift}, array: ${uint8}
     `);
   if(shift === 0) return;
@@ -129,7 +129,7 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
 }
 
 // wrap a ArrayBuffer object and turn it into a SkelfBuffer by adding the bitLength property.
-convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
+export function convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
   (buffer as any).bitLength = bitLength;
-  return buffer as SkelfBuffer;
+  return buffer as ISkelfBuffer;
 };
