@@ -1,7 +1,7 @@
 import {NodeFileSpace} from "skelf/space/node"
 import {IStruct,ISpace,Offset,IReadableStream,IWritableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
-import {offsetToBits,mergeByte,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
+import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 import * as fs from "node:fs";
 
 abstract class BaseReadableStream implements IReadableStream {
@@ -97,6 +97,15 @@ abstract class BaseReadableStream implements IReadableStream {
         const newCacheSize = this.cacheSize + bytesToRead*8 - sizeInBits;
         const newCacheByte = uint8[uint8.byteLength-1] & (0xFF >> (8-newCacheSize));
         shiftUint8ByBits(uint8,newCacheSize);
+        // inject the cached bits into the new aligned buffer
+        const injectionPosition = (size - cache) % 8;
+        uint8[0] = mergeBytes((this.cacheByte << injectionPosition) & 0xFF,uint8[0],8-injectionPosition);
+        if(this.cacheSize > newCacheSize){
+          // some of the cached bits should be injected into the second byte of the buffer
+          uint8[1] = this.cacheByte >> (8-injectionPosition)
+        }
+        this.#locked = false;
+        return convertToSkelfBuffer(uint8.buffer,sizeInBits)
       }
     }
 
