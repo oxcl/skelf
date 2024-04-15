@@ -7,7 +7,7 @@ import * as fs from "node:fs";
 export abstract class BaseReadableStream implements IReadableStream {
   abstract readonly name : string;
 
-  #locked = true;
+  #locked = false;
   get locked(){ return this.#locked }
 
   #ready = false;
@@ -59,6 +59,7 @@ export abstract class BaseReadableStream implements IReadableStream {
   async skip(size : Offset){
     // TODO
   }
+
   async read(size : Offset){
     if(this.locked)
       throw new LockedStreamError(`
@@ -81,7 +82,7 @@ export abstract class BaseReadableStream implements IReadableStream {
     }
 
     const sizeInBytes = Math.ceil(sizeInBits / 8);
-    const bytesToRead = Math.ceil(sizeInBits - this.cacheSize);
+    const bytesToRead = Math.ceil((sizeInBits - this.cacheSize) / 8);
     const buffer = await this._read(bytesToRead);
     if(!buffer)
       throw new EndOfStreamError(`
@@ -156,9 +157,7 @@ export class ReadableStream extends BaseReadableStream {
   }
 
   static async create(options : ReadableStreamConstructorOptions){
-    const newStream = new ReadableStream(options);
-    await newStream.init();
-    return newStream;
+    return await new ReadableStream(options).init();
   }
 }
 

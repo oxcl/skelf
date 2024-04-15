@@ -17,3 +17,8 @@ class DumbReadableStream extends BaseReadableStream {
     return new Uint8Array(this.array.splice(0,size)).buffer;
   }
 }
+
+const stream = await new DumbReadableStream([255,0,255]).init();
+
+console.log(await stream.read("5b"));
+console.log(await stream.read("11b"));

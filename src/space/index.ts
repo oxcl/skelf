@@ -205,9 +205,7 @@ export class Space extends BaseSpace {
   }
   // create a new space object and initialize it so that it's ready to use
   static async create(options : SpaceConstructorOptions){
-    const newSpace = new Space(options);
-    await newSpace.init();
-    return newSpace;
+    return await new Space(options).init();
   }
 }
 
