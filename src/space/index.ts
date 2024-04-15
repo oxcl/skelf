@@ -1,8 +1,7 @@
 import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
 import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
 import {shiftUint8ByBits,cloneBuffer} from "./utils.js"
-import {mergeBytes,offsetToBits} from "#utils"
-import SkelfBuffer from "skelf/buffer"
+import {mergeBytes,offsetToBits,convertToSkelfBuffer} from "#utils"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
@@ -105,10 +104,10 @@ export abstract class BaseSpace implements ISpace {
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
     if(bitShift + leftoverBitsToOffset >= 8){
-      return new SkelfBuffer(uint8.slice(1).buffer,sizeInBits);
+      return convertToSkelfBuffer(uint8.slice(1).buffer,sizeInBits);
     }
     else {
-      return new SkelfBuffer(buffer,sizeInBits);
+      return convertToSkelfBuffer(buffer,sizeInBits);
     }
   }
 
@@ -213,5 +212,4 @@ export class Space extends BaseSpace {
   }
 }
 
-export {SkelfBuffer}
 export default Space

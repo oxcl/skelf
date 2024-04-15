@@ -44,7 +44,6 @@
     "./types": "./dist/types.js",
     "./space": "./dist/space/index.js",
     "./space/node": "./dist/space/node/index.js",
-    "./buffer": "./dist/buffer.js"
   },
   "devDependencies": {
     "@types/node": "^20.12.4",
