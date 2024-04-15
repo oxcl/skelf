@@ -1,10 +1,10 @@
 import {NodeFileSpace} from "skelf/space/node"
-import {IStruct,ISpace,Offset,IReadableStream,IWritableStream} from "skelf/types"
+import {IStruct,ISpace,Offset,IReadableStream,IWritableStream,ReadableStreamConstructorOptions} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 import * as fs from "node:fs";
 
-abstract class BaseReadableStream implements IReadableStream {
+export abstract class BaseReadableStream implements IReadableStream {
   abstract readonly name : string;
 
   #locked = true;
@@ -25,7 +25,10 @@ abstract class BaseReadableStream implements IReadableStream {
   // abstracted away for the creator of the stream
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected abstract _skip(size : number) : Promise<boolean>;
+  protected async _skip(size : number) : Promise<boolean>{
+    const result = await this._read(size);
+    return (result !== null) && (result.byteLength === size);
+  };
   protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
 
   async init(){
@@ -124,97 +127,37 @@ abstract class BaseReadableStream implements IReadableStream {
         return convertToSkelfBuffer(uint8.buffer,sizeInBits)
       }
     }
+  }
+}
+
+export class ReadableStream extends BaseReadableStream {
+  readonly name : string;
+  private readonly options : ReadableStreamConstructorOptions;
+  protected override async _init(){
+    if(this.options.init) return await this.options.init();
+  };
+  protected override async _close(){
+    if(this.options.close) return await this.options.close();
+  }
+  protected override async _skip(size : number){
+    if(this.options.skip) return await this.options.skip(size);
+    else return await super._skip(size);
+  }
+  protected override async _read(size : number){
+    return this.options.read(size);
+  };
 
 
-    ////////
-//    if(sizeInBits <= this.cacheSize){
-//      const buffer = new Uint8Array([
-//        this.cacheByte >> (this.cacheSize - sizeInBits) // extracted the amount of bits needed from cache
-//      ]).buffer;
-//      this.cacheByte >>= sizeInBits; // remove extraxted bits from the cache
-//      this.cacheSize -= sizeInBits;
-//      this.#locked = false;
-//      return buffer;
-//    }
-//
-//    const sizeInBytes = Math.ceil(sizeInBits / 8); // how many bytes it takes to cover all bits
-//    const bitsToRead  = sizeInBits - this.cacheSize; // amount of bits that should be read from the stream
-//    const bytesToRead = Math.ceil((bytesToRead) / 8); // bytes that need to be readed
-//    const bitsToCacheSize = (bytesToRead*8 - bitsToRead) % 8; // extra bits that are read from stream
-//
-//    if(this.cacheSize === 0){
-//      if(sizeInBits % 8 === 0){
-//        const buffer = await this._read(bytesToRead);
-//        this.#locked = false;
-//        return new SkelfBuffer(buffer,sizeInBits);
-//      }
-//
-//      if(this.sizeInBytes !== bytesToRead){
-//        const buffer = await this._read(bytesToRead);
-//        const bitsToCache = buffer[buffer.byteLength-1] & (0xFF >> (8-bitsToCacheSize));
-//        const alignedBuffer = cloneBuffer(buffer,1);
-//        const uint8 = new Uint8Array(alignedBuffer)
-//        shiftUint8ByBits(uint8,bitsToCacheSize);
-//        this.cacheByte = bitsToCache
-//        this.cacheSize = bitsToCacheSize;
-//        this.#locked = false;
-//        return new SkelfBuffer(alignedBuffer,sizeInBits);
-//      }
-//
-//      const buffer = await this._read(bytesToRead);
-//      const bitsToCache = buffer[buffer.byteLength-1] & (0xFF >> (8-bitsToCacheSize));
-//      const uint8 = new Uint8Array(buffer);
-//      shiftUint8ByBits(uint8,bitsToCacheSize);
-//      this.cacheByte = bitsToCache;
-//      this.cacheSize = bitsToCacheSize;
-//      this.#locked = false;
-//      return new SkelfBuffer(buffer,sizeInBits);
-//    }
-//
-//    if(sizeInBits % 8 <= this.cacheSize){
-//      // expansion is needed
-//      const buffer = await this._read(bytesToRead);
-//      this.#locked = false;
-//      return new SkelfBuffer(buffer,sizeInBits);
-//    }
-//
-//    if(this.sizeInBytes !== bytesToRead){
-//      const buffer = await this._read(bytesToRead);
-//      const bitsToCache = buffer[buffer.byteLength-1] & (0xFF >> (8-bitsToCacheSize));
-//      const alignedBuffer = cloneBuffer(buffer,1);
-//      const uint8 = new Uint8Array(alignedBuffer)
-//      shiftUint8ByBits(uint8,bitsToCacheSize);
-//      this.cacheByte = bitsToCache
-//      this.cacheSize = bitsToCacheSize;
-//      this.#locked = false;
-//      return new SkelfBuffer(alignedBuffer,sizeInBits);
-//    }
-//
-//    const buffer = await this._read(bytesToRead);
-//    const bitsToCache = buffer[buffer.byteLength-1] & (0xFF >> (8-bitsToCacheSize));
-//    const uint8 = new Uint8Array(buffer);
-//    shiftUint8ByBits(uint8,bitsToCacheSize);
-//    this.cacheByte = bitsToCache;
-//    this.cacheSize = bitsToCacheSize;
-//    this.#locked = false;
-//    return new SkelfBuffer(buffer,sizeInBits);
-//
-//
-//
-//
-//
-//    const buffer = await this._read(bytesToRead);
-//    if(!buffer || buffer.byteLength < bytesToRead)
-//      throw new EndOfStreamError(`
-//        stream '${this.name}' reached its end while trying to read '${offsetToString(size)}' from it.
-//      `)
-//
-//    if(this.cacheSize === 0 && sizeInBits % 8 === 0){
-//      this.#locked = false;
-//      return buffer;
-//    }
-//
-//    this.#locked = false;
+  constructor(options : ReadableStreamConstructorOptions){
+    super();
+    this.name = options.name;
+    this.options = options;
+  }
+
+  static async create(options : ReadableStreamConstructorOptions){
+    const newStream = new ReadableStream(options);
+    await newStream.init();
+    return newStream;
   }
 }
 

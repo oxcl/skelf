@@ -49,4 +49,12 @@ export type SpaceConstructorOptions = {
   readonly write  : (buffer : ArrayBuffer, offset : number) => Promise<void>;
 }
 
+export type ReadableStreamConstructorOptions = {
+  readonly name   : string;
+  readonly init?  : () => Promise<void>;
+  readonly close? : () => Promise<void>;
+  readonly skip?  : (size : number) => Promise<boolean>;
+  readonly read   : (size : number) => Promise<ArrayBuffer | null>;
+}
+
 export type Offset = number | string | [number,number] | { amount : number, unit : number};
