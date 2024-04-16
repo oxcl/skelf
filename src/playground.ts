@@ -18,7 +18,7 @@ class DumbReadableStream extends BaseReadableStream {
   }
 }
 
-const stream = await new DumbReadableStream([255,0,255]).init();
+const stream = await new DumbReadableStream([0xaa,0x08,255]).init();
 
-console.log(await stream.read("5b"));
-console.log(await stream.read("11b"));
+console.log(await stream.read("2b"));
+console.log(await stream.read("20b"));

@@ -80,20 +80,21 @@ export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0,offset : nu
     return buffer.slice(0); // cloning the easy way
 
   const clonedBuffer = new ArrayBuffer(buffer.byteLength + expand);
-  const lengthDouble = Math.floor(clonedBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
 
-  const float64 = new Float64Array(buffer,0, lengthDouble)
-  const resultArray = new Float64Array(clonedBuffer,offset, lengthDouble);
+  // cloning the big portion
+  const bigPortionLength = Math.floor(clonedBuffer.byteLength / BigInt64Array.BYTES_PER_ELEMENT);
+  const bigPortionArray = new BigInt64Array(buffer,0,bigPortionLength);
+  const dataView = new DataView(clonedBuffer,offset);
 
-  for (let i = 0; i < resultArray.length; i++)
-     resultArray[i] = float64[i];
+  for (let i = 0; i < bigPortionArray.length; i++)
+    dataView.setBigInt64(i*BigInt64Array.BYTES_PER_ELEMENT,bigPortionArray[i]);
 
-  // copying over the remaining bytes
-  const uint8 = new Uint8Array(buffer, lengthDouble * Float64Array.BYTES_PER_ELEMENT)
-  const remainingArray = new Uint8Array(clonedBuffer,offset + lengthDouble * Float64Array.BYTES_PER_ELEMENT);
+  // copying over the remaining bytes in the small portion
+  const smallPortionArray = new Uint8Array(buffer, bigPortionLength * BigInt64Array.BYTES_PER_ELEMENT)
+  const uint8 = new Uint8Array(clonedBuffer,offset + bigPortionLength * BigInt64Array.BYTES_PER_ELEMENT);
 
-  for (let i = 0; i < remainingArray.length; i++)
-     remainingArray[i] = uint8[i];
+  for (let i = 0; i < smallPortionArray.length; i++)
+    uint8[i] = smallPortionArray[i];
 
   return clonedBuffer;
 }

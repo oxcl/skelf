@@ -84,7 +84,8 @@ export abstract class BaseReadableStream implements IReadableStream {
     const sizeInBytes = Math.ceil(sizeInBits / 8);
     const bytesToRead = Math.ceil((sizeInBits - this.cacheSize) / 8);
     const buffer = await this._read(bytesToRead);
-    if(!buffer)
+
+    if(!buffer || buffer.byteLength < bytesToRead)
       throw new EndOfStreamError(`
         stream '${this.name}' reached end its while trying to read ${bytesToRead} bytes from it.
       `);
@@ -121,10 +122,13 @@ export abstract class BaseReadableStream implements IReadableStream {
         shiftUint8ByBits(uint8,newCacheSize);
         // inject the cached bits into the new aligned buffer
         const injectionPosition = (sizeInBits - this.cacheSize) % 8;
-        uint8[0] = mergeBytes((this.cacheByte << injectionPosition) & 0xFF,uint8[0],8-injectionPosition);
         if(this.cacheSize > newCacheSize){
-          // some of the cached bits should be injected into the second byte of the buffer
-          uint8[1] = this.cacheByte >> (8-injectionPosition)
+          // some of the cached bits should be injected into the second byte of the buffer instead of first
+          uint8[1] = mergeBytes((this.cacheByte << injectionPosition) & 0xFF,uint8[1],8-injectionPosition);
+          uint8[0] = this.cacheByte >> (8-injectionPosition)
+        }
+        else{
+          uint8[0] = mergeBytes((this.cacheByte << injectionPosition) & 0xFF,uint8[0],8-injectionPosition);
         }
         this.#locked = false;
         return convertToSkelfBuffer(uint8.buffer,sizeInBits)
