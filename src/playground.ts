@@ -1,9 +1,6 @@
-import {Offset,Space} from "skelf"
-import {NodeFileSpace} from "skelf/space/node"
-import units from "skelf/units"
-import {InvalidOffsetError,LockedSpaceError} from "skelf/errors"
-import * as fs from "node:fs/promises"
-import {BaseReadableStream} from "skelf"
+import {Offset,Space,BaseReadableStream} from "skelf"
+//import {NodeFileSpace} from "skelf/space/node"
+//import * as fs from "node:fs/promises"
 
 class DumbReadableStream extends BaseReadableStream {
   static dumbCount : number = 0;
