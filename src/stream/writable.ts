@@ -2,7 +2,7 @@ import {Offset,IReadableStream,ReadableStreamConstructorOptions} from "skelf/typ
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 
-export abstract class BaseReadableStream extends BaseStream implements IReadableStream {
+abstract class BaseStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -23,11 +23,6 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
   // abstracted away for the creator of the stream
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected async _skip(size : number) : Promise<boolean> {
-    const result = await this._read(size);
-    return (result !== null) && (result.byteLength === size);
-  };
-  protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
 
   async init(){
     if(this.ready)
@@ -51,85 +46,103 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
     if(this.closed)
       throw new StreamIsClosedError(`trying to close stream '${this.name}' while it's already closed.`)
     await this._close();
+    if(this.cacheSize !== 0)
+      console.error(`
+        stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
+        cache value: ${(new Uint8Array([this.cacheByte]))[0]}.
+      `);
     this.#closed = true;
   }
+}
 
-  async skip(size : Offset){
-    const sizeInBits = offsetToBits(size);
+
+export abstract class BaseWritableStream implements IWritableStream {
+
+  protected abstract _write(buffer : ArrayBuffer) : Promise<boolean>;
+
+  async write(buffer : ISkelfBuffer | ArrayBuffer){
     if(this.locked)
       throw new LockedStreamError(`
-        trying to skip ${offsetToString(size)} from stream '${this.name}' while it's locked. this could
-        be caused by a not awaited call to a read/write method, which might be still pending.
-      `);
-    if(!this.ready)
-      throw new StreamIsNotReadyError(`
-        skipping ${offsetToString(size)} from stream '${this.name}' while it's not initialized. streams should
-        be first initialized with the init method before using them. this could be caused by a not awaited call
-        to the init method.
-      `);
-    if(this.closed)
-      throw new StreamIsClosedError(`
-        trying to skip ${offsetToString(size)} from stream '${this.name}' while it's already closed.
-      `)
-    this.#locked = true;
-
-    if(sizeInBits === 0){
-      this.#locked = false;
-      return
-    }
-
-    if(sizeInBits <= this.cacheSize){
-      this.cacheSize -= sizeInBits
-      this.cacheByte &= 0xFF >> (8-sizeInBits)
-      this.#locked = false;
-      return
-    }
-
-    const bytesToSkip = Math.floor((sizeInBits - this.cacheSize) / 8);
-    const bytesToRead = Math.ceil((sizeInBits - this.cacheSize) / 8) - bytesToSkip;
-
-    // skip whole bytes
-    const success = await this._skip(bytesToSkip);
-    if(!success)
-      throw new EndOfStreamError(`
-        stream '${this.name}' reached end its while trying to skip ${bytesToSkip} bytes from it.
-      `);
-    if(bytesToRead === 0) return;
-    // read the leftover bits that should be skipped in the last byte and cache the rest
-    const buffer = await this._read(bytesToRead);
-    if(!buffer || buffer.byteLength < bytesToRead)
-      throw new EndOfStreamError(`
-        stream '${this.name}' reached end its while trying to read ${bytesToRead} bytes from it.
-      `);
-    const lastByte = (new Uint8Array(buffer,buffer.byteLength-1))[0];
-
-    this.cacheSize = (8 - ((sizeInBits - this.cacheSize) % 8 )) % 8
-    this.cacheByte = lastByte & (0xFF >> (8-this.cacheSize));
-    this.#locked = false;
-  }
-
-  async read(size : Offset){
-    if(this.locked)
-      throw new LockedStreamError(`
-        trying to read from stream '${this.name}' while it's locked. this could be caused by a not awaited call
+        trying to write to stream '${this.name}' while it's locked. this could be caused by a not awaited call
         to a read/write method, which might be still pending.
       `);
     if(!this.ready)
       throw new StreamIsNotReadyError(`
-        reading from stream '${this.name}' while it's not initialized. streams should be first initialized
+        writing to stream '${this.name}' while it's not initialized. streams should be first initialized
         with the init method before using them. this could be caused by a not awaited call to the init method.
       `);
     if(this.closed)
-      throw new StreamIsClosedError(`trying to read from stream '${this.name}' while it's already closed.`)
+      throw new StreamIsClosedError(`trying to write to stream '${this.name}' while it's already closed.`)
     this.#locked = true;
 
-    const sizeInBits = offsetToBits(size);
+    const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
+    const sizeInBytes = Math.ceil(sizeInBits / 8)
 
     if(sizeInBits === 0){
       this.#locked = false;
-      return convertToSkelfBuffer(new ArrayBuffer(0),0);
+      return;
     }
 
+    if(this.cacheSize + sizeInBits > 8){
+      const byte = (new Uint8Array(buffer))[0];
+      this.cacheByte = mergeByte(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
+      this.cacheSize += sizeInBits;
+      return;
+    }
+
+    if(this.cacheSize === 0 && sizeInBits % 8 === 0){
+      await this._write(buffer);
+      return;
+    }
+
+    const emptySpaceSize = sizeInBytes*8 - sizeInBits;
+
+    const newCacheSize = (this.cacheSize + sizeInBits) % 8;
+    const newCache = (uint8[uint8.byteLength-1] << (8-newCacheSize) ) & 0xFF;
+
+    shiftUint8ByBits(uint8,newCacheSize);
+
+    // if cache is empty but size is not byted
+    if(this.cacheSize === 0 && sizeInBits % 8 !== 0){
+      const alignedBuffer = cloneBuffer(buffer);
+      const uint8 = new Uint8Array(alignedBuffer);
+      shiftUint8ByBits(uint8,-newCacheSize);
+      const slicedBuffer = alignedBuffer.slice(0,-1);
+      await this._write(slicedBuffer);
+      this.#locked = false;
+      return;
+    }
+
+    if(this.cacheSize === emptySpaceSize){
+      // just inject the cache to the empty space in the buffer and be done with it
+      const alignedBuffer = cloneBuffer(buffer);
+      const uint8 = new Uint8Array(alignedBuffer);
+      uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
+      this._write(alignedBuffer);
+      this.cacheSize = 0
+      this.cacheByte = 0;
+      this.#locked = false;
+      return;
+    }
+
+    if(this.cacheSize > )
+
+
+
+
+
+    const alignementShift = -(sizeInBytes*8 - sizeInBits) + this.cacheSize;
+    if(alignementShift <= 0){
+      shiftUint8ByBits(uint8,alignmentShift)
+      uint8[0] =
+    }
+
+    if(this.cacheSize === 0 && sizeInBits % 8 !== 0){
+      const bytesToWrite = Math.floor(sizeInBits / 8);
+    }
+
+
+    ////////////
     if(sizeInBits <= this.cacheSize){
       const uint8 = new Uint8Array([
         this.cacheByte >> (this.cacheSize - sizeInBits)
@@ -182,6 +195,14 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
     return convertToSkelfBuffer(uint8.buffer,sizeInBits)
   }
 }
+
+
+
+
+
+
+
+
 
 export class ReadableStream extends BaseReadableStream {
   readonly name : string;

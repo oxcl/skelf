@@ -1,31 +1,42 @@
+// pollyfill for node.js Buffer type
 declare global {
   interface Buffer {}
 }
-interface IAbstractSpaceOrStream {
+
+export interface ISpace {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
   name  : string;
   close : () => Promise<void>;
-}
-export interface ISpace extends IAbstractSpaceOrStream {
   init  : () => Promise<ISpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
 
-export interface IReadableStream extends IAbstractSpaceOrStream {
+export interface IReadableStream {
+  readonly locked : boolean;
+  readonly ready  : boolean;
+  readonly closed : boolean;
+  name  : string;
+  close : () => Promise<void>;
   init  : () => Promise<IReadableStream>;
   read  : (size : Offset) => Promise<ISkelfBuffer>;
   skip  : (size : Offset) => Promise<void>;
 }
-export interface IWritableStream extends IAbstractSpaceOrStream {
+
+export interface IWritableStream {
+  readonly locked : boolean;
+  readonly ready  : boolean;
+  readonly closed : boolean;
+  name  : string;
+  close : () => Promise<void>;
   init  : () => Promise<IWritableStream>;
-  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<number>;
+  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
 }
 
-export type SkelfInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | ReadonlyArray<number> | Blob | Iterator<number> | AsyncIterator<number> | Iterator<number> | Buffer;
-export type SkelfOutput = ISpace | IWritableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Buffer;
+export type StructInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | ReadonlyArray<number> | Blob | Iterator<number> | AsyncIterator<number> | Iterator<number> | Buffer;
+export type StructOutput = ISpace | IWritableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Buffer;
 
 // since ArrayBuffers don't have the capability to work with bits, SkelfBuffer is a simple wrapper around
 // ArrayBuffer class which adds the size of the buffer in bits using the bitLength property. when the data is
@@ -41,6 +52,7 @@ export interface ISkelfBuffer extends ArrayBuffer {
 export interface IStruct<T> {
   read  : (input : ISpace,offset? : Offset) => Promise<T>;
   write : (value : T,output : ISpace, offset? : Offset) => Promise<void>;
+  constraint : (value : T) => boolean;
 }
 
 export type SpaceConstructorOptions = {
@@ -57,6 +69,13 @@ export type ReadableStreamConstructorOptions = {
   readonly close? : () => Promise<void>;
   readonly skip?  : (size : number) => Promise<boolean>;
   readonly read   : (size : number) => Promise<ArrayBuffer | null>;
+}
+
+export type WritableStreamConstructorOptions = {
+  readonly name   : string;
+  readonly init?  : () => Promise<void>;
+  readonly close? : () => Promise<void>;
+  readonly write  : (buffer : ArrayBuffer) => Promise<void>;
 }
 
 export type Offset = number | string | [number,number] | { amount : number, unit : number};
