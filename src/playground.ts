@@ -17,5 +17,5 @@ class DumbReadableStream extends BaseReadableStream {
 
 const stream = await new DumbReadableStream([0xaa,0x08,255]).init();
 
-console.log(await stream.read("2b"));
+console.log(await stream.skip("2b"));
 console.log(await stream.read("20b"));
