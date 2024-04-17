@@ -32,7 +32,7 @@ export class GenericReadableStream extends ReadableStream {
   }
 
   static async create(options : ReadableStreamConstructorOptions){
-    return await new ReadableStream(options).init();
+    return await new GenericReadableStream(options).init();
   }
 }
 

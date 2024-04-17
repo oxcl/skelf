@@ -2,7 +2,7 @@ import {Offset,IReadableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 
-export abstract class BaseReadableStream implements IReadableStream {
+export abstract class ReadableStream implements IReadableStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -183,3 +183,5 @@ export abstract class BaseReadableStream implements IReadableStream {
     return convertToSkelfBuffer(uint8.buffer,sizeInBits)
   }
 }
+
+export default ReadableStream

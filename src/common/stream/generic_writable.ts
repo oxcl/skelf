@@ -27,7 +27,7 @@ export class GenericWritableStream extends WritableStream {
   }
 
   static async create(options : WritableStreamConstructorOptions){
-    return await new WritableStream(options).init();
+    return await new GenericWritableStream(options).init();
   }
 }
 

@@ -42,9 +42,9 @@
     "./units": "./dist/units.js",
     "./errors": "./dist/errors.js",
     "./types": "./dist/types.js",
-    "./space": "./dist/space/index.js",
-    "./space/node": "./dist/space/node/index.js",
-    "./stream": "./dist/stream/index.js"
+    "./space": "./dist/space.js",
+    "./readable_stream": "./dist/readable_stream.js",
+    "./writable_stream": "./dist/writable_stream.js"
   },
   "devDependencies": {
     "@types/node": "^20.12.4",

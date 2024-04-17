@@ -2,7 +2,7 @@ import {Offset,IReadableStream,ISkelfBuffer,IWritableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 
-export abstract class BaseWritableStream implements IWritableStream {
+export abstract class WritableStream implements IWritableStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -22,7 +22,7 @@ export abstract class BaseWritableStream implements IWritableStream {
   // abstracted away for the creator of the stream
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected abstract _write(buffer : ArrayBuffer) : Promise<boolean>;
+  protected abstract _write(buffer : ArrayBuffer) : Promise<void>;
 
   async init(){
     if(this.ready)
@@ -104,3 +104,4 @@ export abstract class BaseWritableStream implements IWritableStream {
     return;
   }
 }
+export default WritableStream
