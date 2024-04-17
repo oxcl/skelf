@@ -7,17 +7,18 @@ export class SpaceReadStream extends SkelfReadStream {
   private bitOffset : number;
   constructor(private space : ISkelfSpace,offset : Offset = 0){
     super();
-    this.name = `spaceStream:${space.name}`;
+    this.name = `rspaceStream:${space.name}`;
     this.bitOffset = offsetToBits(offset);
   }
-  _read(size : number){
-    const result = this.space.read(`${sizeInBits}b`,this.bitOffset);
+  async _read(size : number){
+    const result = await this.space.read(size,this.bitOffset);
     this.bitOffset += size*8;
     return result;
   }
 
-  _skip(size : number){
-    this.bitOffset += number*8;
+  override async _skip(size : number){
+    this.bitOffset += size*8;
+    return true;
   }
 }
 
