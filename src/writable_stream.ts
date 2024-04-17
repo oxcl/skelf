@@ -81,11 +81,13 @@ export abstract class WritableStream implements IWritableStream {
       const byte = (new Uint8Array(buffer))[0];
       this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
       this.cacheSize += sizeInBits;
+      this.#locked = false;
       return;
     }
 
     if(this.cacheSize === 0 && sizeInBits % 8 === 0){
       await this._write(buffer);
+      this.#locked = false;
       return;
     }
 

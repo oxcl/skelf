@@ -44,7 +44,9 @@
     "./types": "./dist/types.js",
     "./space": "./dist/space.js",
     "./readable_stream": "./dist/readable_stream.js",
-    "./writable_stream": "./dist/writable_stream.js"
+    "./writable_stream": "./dist/writable_stream.js",
+    "./common": "./dist/common/index.js",
+    "./node": "./dist/node/index.js"
   },
   "devDependencies": {
     "@types/node": "^20.12.4",
