@@ -33,6 +33,7 @@ export interface IWritableStream {
   close : () => Promise<void>;
   init  : () => Promise<IWritableStream>;
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
+  flush : () => Promise<void>;
 }
 
 export type StructInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | ReadonlyArray<number> | Blob | Iterator<number> | AsyncIterator<number> | Iterator<number> | Buffer;

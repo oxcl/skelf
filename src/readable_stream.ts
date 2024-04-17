@@ -1,6 +1,6 @@
 import {Offset,IReadableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
-import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
+import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "skelf/utils"
 
 export abstract class ReadableStream implements IReadableStream {
   abstract readonly name : string;
@@ -52,8 +52,8 @@ export abstract class ReadableStream implements IReadableStream {
     await this._close();
     if(this.cacheSize !== 0)
       console.error(`
-        stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
-        cache value: ${(new Uint8Array([this.cacheByte]))[0]}.
+        WARNING: stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
+        cache value: 0x${this.cacheByte.toString(16)}.
       `);
     this.#closed = true;
   }

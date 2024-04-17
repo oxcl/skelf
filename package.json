@@ -34,9 +34,6 @@
     "type": "git",
     "url": "git+https://github.com/oxcl/skelf.git"
   },
-  "imports": {
-    "#utils": "./dist/utils.js"
-  },
   "exports": {
     ".": "./dist/index.js",
     "./units": "./dist/units.js",
@@ -45,6 +42,7 @@
     "./space": "./dist/space.js",
     "./readable_stream": "./dist/readable_stream.js",
     "./writable_stream": "./dist/writable_stream.js",
+    "./utils": "./dist/utils.js",
     "./common": "./dist/common/index.js",
     "./node": "./dist/node/index.js"
   },

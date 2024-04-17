@@ -134,3 +134,7 @@ export function convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
   (buffer as any).bitLength = bitLength;
   return buffer as ISkelfBuffer;
 };
+
+export function groom(str : string){
+  return str.replace(/\n[ \t]+/g," ");
+}

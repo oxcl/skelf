@@ -2,7 +2,7 @@ export abstract class SkelfError extends Error {
   abstract override name : string;
   context? : any;
   constructor(message : string,{cause,context} : { cause? : any, context? : any} = {}){
-    super(message.replace(/\n[ \t]+/," "));
+    super(message.replace(/\n[ \t]+/g," "));
     super.cause = cause;
     this.context = context;
   }

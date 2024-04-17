@@ -1,6 +1,6 @@
 import {Offset,IReadableStream,ISkelfBuffer,IWritableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
-import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
+import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom} from "skelf/utils"
 
 export abstract class WritableStream implements IWritableStream {
   abstract readonly name : string;
@@ -47,10 +47,10 @@ export abstract class WritableStream implements IWritableStream {
       throw new StreamIsClosedError(`trying to close stream '${this.name}' while it's already closed.`)
     await this._close();
     if(this.cacheSize !== 0)
-      console.error(`
-        stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
-        cache value: ${(new Uint8Array([this.cacheByte]))[0]}.
-      `);
+      console.error(groom(`
+        WARNING: stream '${this.name}' was closed while ${this.cacheSize} bits remained in the cache.
+        cache value: 0x${this.cacheByte.toString(16)}.
+      `));
     this.#closed = true;
   }
 
@@ -76,8 +76,7 @@ export abstract class WritableStream implements IWritableStream {
       this.#locked = false;
       return;
     }
-
-    if(this.cacheSize + sizeInBits > 8){
+    if(this.cacheSize + sizeInBits < 8){
       const byte = (new Uint8Array(buffer))[0];
       this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
       this.cacheSize += sizeInBits;
@@ -102,8 +101,18 @@ export abstract class WritableStream implements IWritableStream {
     uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
 
     await this._write(slicedBuffer);
+    this.cacheByte = newCache;
+    this.cacheSize = newCacheSize;
     this.#locked = false;
     return;
+  }
+  async flush(){
+    if(this.cacheSize === 0) return;
+    await this._write(
+      new Uint8Array([
+        mergeBytes(this.cacheByte,0x00,this.cacheSize)
+      ]).buffer
+    )
   }
 }
 export default WritableStream

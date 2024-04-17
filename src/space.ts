@@ -1,6 +1,6 @@
 import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
 import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
-import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "#utils"
+import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "skelf/utils"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
