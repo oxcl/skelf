@@ -1,8 +1,8 @@
-import {Offset,IReadableStream,ReadableStreamConstructorOptions} from "skelf/types"
+import {Offset,IReadableStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "#utils"
 
-export abstract class BaseReadableStream extends BaseStream implements IReadableStream {
+export abstract class BaseReadableStream implements IReadableStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -17,17 +17,16 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
   private cacheByte : number = 0;
   private cacheSize : number = 0;
 
-
   // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away for the creator of the stream
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
+  protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
   protected async _skip(size : number) : Promise<boolean> {
     const result = await this._read(size);
     return (result !== null) && (result.byteLength === size);
   };
-  protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
 
   async init(){
     if(this.ready)
@@ -51,6 +50,11 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
     if(this.closed)
       throw new StreamIsClosedError(`trying to close stream '${this.name}' while it's already closed.`)
     await this._close();
+    if(this.cacheSize !== 0)
+      console.error(`
+        stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
+        cache value: ${(new Uint8Array([this.cacheByte]))[0]}.
+      `);
     this.#closed = true;
   }
 
@@ -154,20 +158,17 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
       return convertToSkelfBuffer(buffer,sizeInBits);
     }
 
-    if(this.cacheSize === 0 && sizeInBits % 8 !== 0){
-      const uint8 = new Uint8Array(buffer);
-      this.cacheSize = sizeInBytes*8 - sizeInBits;
-      this.cacheByte = mergeBytes(0x00,uint8[uint8.byteLength-1],8-this.cacheSize);
-      shiftUint8ByBits(uint8,this.cacheSize);
-      this.#locked = false;
-      return convertToSkelfBuffer(buffer,sizeInBits)
-    }
-
     const alignedBuffer = (sizeInBytes === bytesToRead) ? buffer : cloneBuffer(buffer,1,1);
     const uint8 = new Uint8Array(alignedBuffer);
     const newCacheSize = this.cacheSize + bytesToRead*8 - sizeInBits;
     const newCacheByte = uint8[uint8.byteLength-1] & (0xFF >> (8-newCacheSize));
     shiftUint8ByBits(uint8,newCacheSize);
+    if(this.cacheSize === 0){
+      this.cacheSize = newCacheSize;
+      this.cacheByte = newCacheByte;
+      this.#locked = false;
+      return convertToSkelfBuffer(buffer,sizeInBits);
+    }
     // inject the cached bits into the new aligned buffer
     const injectionPosition = (sizeInBits - this.cacheSize) % 8;
     if(this.cacheSize > newCacheSize){
@@ -182,33 +183,3 @@ export abstract class BaseReadableStream extends BaseStream implements IReadable
     return convertToSkelfBuffer(uint8.buffer,sizeInBits)
   }
 }
-
-export class ReadableStream extends BaseReadableStream {
-  readonly name : string;
-  private readonly options : ReadableStreamConstructorOptions;
-  protected override async _init(){
-    if(this.options.init) return await this.options.init();
-  };
-  protected override async _close(){
-    if(this.options.close) return await this.options.close();
-  }
-  protected override async _skip(size : number){
-    if(this.options.skip) return await this.options.skip(size);
-    else return await super._skip(size);
-  }
-  protected override async _read(size : number){
-    return this.options.read(size);
-  };
-
-  constructor(options : ReadableStreamConstructorOptions){
-    super();
-    this.name = options.name;
-    this.options = options;
-  }
-
-  static async create(options : ReadableStreamConstructorOptions){
-    return await new ReadableStream(options).init();
-  }
-}
-
-export default ReadableStream

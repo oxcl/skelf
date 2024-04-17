@@ -52,7 +52,7 @@ export interface ISkelfBuffer extends ArrayBuffer {
 export interface IStruct<T> {
   read  : (input : ISpace,offset? : Offset) => Promise<T>;
   write : (value : T,output : ISpace, offset? : Offset) => Promise<void>;
-  constraint : (value : T) => boolean;
+  constraint? : (value : T) => boolean;
 }
 
 export type SpaceConstructorOptions = {
@@ -61,21 +61,6 @@ export type SpaceConstructorOptions = {
   readonly close? : () => Promise<void>;
   readonly read   : (size : number, offset : number) => Promise<ArrayBuffer>;
   readonly write  : (buffer : ArrayBuffer, offset : number) => Promise<void>;
-}
-
-export type ReadableStreamConstructorOptions = {
-  readonly name   : string;
-  readonly init?  : () => Promise<void>;
-  readonly close? : () => Promise<void>;
-  readonly skip?  : (size : number) => Promise<boolean>;
-  readonly read   : (size : number) => Promise<ArrayBuffer | null>;
-}
-
-export type WritableStreamConstructorOptions = {
-  readonly name   : string;
-  readonly init?  : () => Promise<void>;
-  readonly close? : () => Promise<void>;
-  readonly write  : (buffer : ArrayBuffer) => Promise<void>;
 }
 
 export type Offset = number | string | [number,number] | { amount : number, unit : number};
