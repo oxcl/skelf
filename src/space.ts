@@ -1,4 +1,4 @@
-import {ISpace,ISkelfBuffer,SpaceConstructorOptions,Offset} from "skelf/types"
+import {ISkelfSpace,ISkelfBuffer,Offset} from "skelf/types"
 import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
 import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "skelf/utils"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
@@ -8,7 +8,7 @@ import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffe
 // with bits
 
 // an implementation of the ISpace interface to abstract some common operations away.
-export abstract class BaseSpace implements ISpace {
+export abstract class SkelfSpace implements ISkelfSpace {
   abstract readonly name : string; // for debugging
 
   // when a space is locked read, write and close operations can't be executed because another operation is
@@ -182,31 +182,4 @@ export abstract class BaseSpace implements ISpace {
   }
 }
 
-export class Space extends BaseSpace {
-  readonly name : string;
-  private readonly options : SpaceConstructorOptions;
-  protected override async _init(){
-    if(this.options.init) this.options.init();
-  };
-  protected override async _close(){
-    if(this.options.close) return this.options.close();
-  }
-  protected override async _read(size : number, offset : number){
-    return this.options.read(size,offset)
-  };
-  protected override async _write(buffer : ArrayBuffer, offset : number){
-    return this.options.write(buffer, offset);
-  }
-
-  constructor(options : SpaceConstructorOptions){
-    super();
-    this.name = options.name;
-    this.options = options;
-  }
-  // create a new space object and initialize it so that it's ready to use
-  static async create(options : SpaceConstructorOptions){
-    return await new Space(options).init();
-  }
-}
-
-export default Space
+export default SkelfSpace

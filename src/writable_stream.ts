@@ -1,8 +1,8 @@
-import {Offset,IReadableStream,ISkelfBuffer,IWritableStream} from "skelf/types"
+import {Offset,ISkelfBuffer,ISkelfWriteStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom} from "skelf/utils"
 
-export abstract class WritableStream implements IWritableStream {
+export abstract class SkelfWriteStream implements ISkelfWriteStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -115,4 +115,4 @@ export abstract class WritableStream implements IWritableStream {
     )
   }
 }
-export default WritableStream
+export default SkelfWriteStream

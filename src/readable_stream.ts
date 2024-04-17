@@ -1,8 +1,8 @@
-import {Offset,IReadableStream} from "skelf/types"
+import {Offset,ISkelfReadStream} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "skelf/utils"
 
-export abstract class ReadableStream implements IReadableStream {
+export abstract class SkelfReadStream implements ISkelfReadStream {
   abstract readonly name : string;
 
   #locked = false;
@@ -184,4 +184,4 @@ export abstract class ReadableStream implements IReadableStream {
   }
 }
 
-export default ReadableStream
+export default SkelfReadStream

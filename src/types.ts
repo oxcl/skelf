@@ -3,41 +3,38 @@ declare global {
   interface Buffer {}
 }
 
-export interface ISpace {
+export interface ISkelfSpace {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
   name  : string;
   close : () => Promise<void>;
-  init  : () => Promise<ISpace>;
+  init  : () => Promise<ISkelfSpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
 
-export interface IReadableStream {
+export interface ISkelfReadStream {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
   name  : string;
   close : () => Promise<void>;
-  init  : () => Promise<IReadableStream>;
+  init  : () => Promise<ISkelfReadStream>;
   read  : (size : Offset) => Promise<ISkelfBuffer>;
   skip  : (size : Offset) => Promise<void>;
 }
 
-export interface IWritableStream {
+export interface ISkelfWriteStream {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
   name  : string;
   close : () => Promise<void>;
-  init  : () => Promise<IWritableStream>;
+  init  : () => Promise<ISkelfWriteStream>;
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
   flush : () => Promise<void>;
 }
-
-export type StructInput = ISpace | IReadableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | ReadonlyArray<number> | Blob | Iterator<number> | AsyncIterator<number> | Iterator<number> | Buffer;
-export type StructOutput = ISpace | IWritableStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Buffer;
 
 // since ArrayBuffers don't have the capability to work with bits, SkelfBuffer is a simple wrapper around
 // ArrayBuffer class which adds the size of the buffer in bits using the bitLength property. when the data is
@@ -49,19 +46,14 @@ export interface ISkelfBuffer extends ArrayBuffer {
   readonly bitLength : number;
 }
 
+export type SkelfStructInput = ISkelfSpace | ISkelfReadStream | ISkelfBuffer | ArrayBuffer | Uint8Array |  ReadonlyArray<number> | Blob | Iterator<number> | AsyncIterator<number> | Iterator<number> | Buffer;
 
-export interface IStruct<T> {
-  read  : (input : ISpace,offset? : Offset) => Promise<T>;
-  write : (value : T,output : ISpace, offset? : Offset) => Promise<void>;
+export type SkelfStructOutput = ISkelfSpace | ISkelfWriteStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Buffer;
+
+export interface ISkelfStruct<T> {
+  read  : (input : SkelfStructInput,offset? : Offset) => Promise<T>;
+  write : (value : T,output : SkelfStructOutput, offset? : Offset) => Promise<void>;
   constraint? : (value : T) => boolean;
-}
-
-export type SpaceConstructorOptions = {
-  readonly name   : string;
-  readonly init?  : () => Promise<void>;
-  readonly close? : () => Promise<void>;
-  readonly read   : (size : number, offset : number) => Promise<ArrayBuffer>;
-  readonly write  : (buffer : ArrayBuffer, offset : number) => Promise<void>;
 }
 
 export type Offset = number | string | [number,number] | { amount : number, unit : number};

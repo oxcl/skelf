@@ -1,7 +1,7 @@
-import {BaseSpace} from "skelf/space"
+import {SkelfSpace} from "skelf/space"
 import * as fs from  "node:fs/promises"
 
-export class NodeFileSpace extends BaseSpace {
+export class NodeFileSpace extends SkelfSpace {
   override readonly name : string;
   private file! : fs.FileHandle;
   constructor(private readonly fileName : string){

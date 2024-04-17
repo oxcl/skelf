@@ -1,6 +1,6 @@
-import {ReadableStream} from "skelf"
+import {SkelfReadStream} from "skelf"
 
-type ReadableStreamConstructorOptions = {
+type ReadStreamConstructorOptions = {
   readonly name   : string;
   readonly init?  : () => Promise<void>;
   readonly close? : () => Promise<void>;
@@ -8,9 +8,9 @@ type ReadableStreamConstructorOptions = {
   readonly read   : (size : number) => Promise<ArrayBuffer | null>;
 }
 
-export class GenericReadableStream extends ReadableStream {
+export class GenericReadStream extends SkelfReadStream {
   readonly name : string;
-  private readonly options : ReadableStreamConstructorOptions;
+  private readonly options : ReadStreamConstructorOptions;
   protected override async _init(){
     if(this.options.init) return await this.options.init();
   };
@@ -25,15 +25,15 @@ export class GenericReadableStream extends ReadableStream {
     return this.options.read(size);
   };
 
-  constructor(options : ReadableStreamConstructorOptions){
+  constructor(options : ReadStreamConstructorOptions){
     super();
     this.name = options.name;
     this.options = options;
   }
 
-  static async create(options : ReadableStreamConstructorOptions){
-    return await new GenericReadableStream(options).init();
+  static async create(options : ReadStreamConstructorOptions){
+    return await new GenericReadStream(options).init();
   }
 }
 
-export default GenericReadableStream
+export default GenericReadStream
