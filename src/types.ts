@@ -57,12 +57,12 @@ export interface ISkelfDataType<T> {
 }
 
 export interface ISkelfReader {
-  skip : (size : Offset) => Promise<ISkelfBuffer>;
-  read : (size : Offset) => Promise<ISkelfBuffer>;
+  readonly skip : (size : Offset) => Promise<void>;
+  readonly read : (size : Offset) => Promise<ISkelfBuffer>;
 }
 
 export interface ISkelfWriter {
-  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<ISkelfBuffer>;
+  readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
 }
 
 export type Offset = number | string | [number,number] | { amount : number, unit : number};
