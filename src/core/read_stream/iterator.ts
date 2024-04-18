@@ -6,7 +6,7 @@ export class IteratorReadStream extends SkelfReadStream {
   readonly name : string;
   private iter : AsyncIterator<number> | Iterator<number>;
   static count : number = 0;
-  constructor(iterLike : IteratorLike, offset : number = 0, name : string | undefined = undefined){
+  constructor(iterLike : IteratorLike, name : string | undefined = undefined){
     super();
     this.name = `iterStream:${name ?? IteratorReadStream.count++}`;
     if(Symbol.iterator in iterLike){

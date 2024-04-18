@@ -1,5 +1,5 @@
 import {ISkelfSpace,ISkelfBuffer,Offset} from "skelf/types"
-import {LockedSpaceError,InvalidSpaceOptionsError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError} from "skelf/errors"
+import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError} from "skelf/errors"
 import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "skelf/utils"
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
@@ -30,8 +30,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
   // abstracted away for the creator of the space
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer>;
-  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<void>;
+  protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer | null>;
+  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<boolean | undefined>;
 
   async init(){
     if(this.ready)
@@ -90,6 +90,11 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const sizeInBits = offsetToBits(size); // convert size to bits
     const bytesToRead = Math.ceil((leftoverBitsToOffset + sizeInBits) / 8) // how many bytes can cover all bits
     const buffer = await this._read(bytesToRead,wholeBytesToOffset);
+    if(!buffer)
+      throw new ReadOutsideSpaceBoundaryError(`
+        failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${wholeBytesToOffset} because
+        it's out of bounds.
+      `)
     const uint8 = new Uint8Array(buffer);
 
     // zero out the beginning of the first (most left) which doesn't include the desired bits
@@ -143,7 +148,12 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // if the operation is in whole bytes without any leftovers, just write the buffer to space and return
     if(leftoverBitsToOffset === 0 && bitLength % 8 === 0){
-      await this._write(buffer,wholeBytesToOffset);
+      const result = await this._write(buffer,wholeBytesToOffset);
+      if(result === false)
+        throw new ReadOutsideSpaceBoundaryError(`
+          failed to write ${buffer.byteLength} bytes to space '${this.name}' from offset ${wholeBytesToOffset}
+          because it's out of bounds.
+        `)
       this.#locked = false;
       return;
     }
@@ -165,7 +175,13 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // merge the first byte with the byte in the space if neccessary
     if(leftoverBitsToOffset !== 0){
-      const firstByte = new Uint8Array(await this._read(1,wholeBytesToOffset))[0];
+      const leftOverBuffer = await this._read(1,wholeBytesToOffset);
+      if(!leftOverBuffer)
+        throw new ReadOutsideSpaceBoundaryError(`
+          failed to read 1 byte from space '${this.name}' from offset ${wholeBytesToOffset} because it's out
+          of bounds.
+        `)
+      const firstByte = new Uint8Array(leftOverBuffer)[0];
       uint8[0] = mergeBytes(firstByte,uint8[0],leftoverBitsToOffset);
       //console.log({firstByte,uint8})
     }
@@ -174,10 +190,21 @@ export abstract class SkelfSpace implements ISkelfSpace {
     if(alignmentShift !== 0){
       // how many bits should be taken from the last byte (most right byte) and merged with our buffer
       const tailSize = (8 - alignmentShift) % 8;
-      const lastByte = new Uint8Array(await this._read(1,wholeBytesToOffset + uint8.byteLength-1))[0];
+      const leftOverBuffer = await this._read(1,wholeBytesToOffset + uint8.byteLength-1);
+      if(!leftOverBuffer)
+        throw new ReadOutsideSpaceBoundaryError(`
+          failed to read 1 byte from space '${this.name}' from offset ${wholeBytesToOffset+uint8.byteLength-1}
+          because it's out of bounds.
+        `)
+      const lastByte = new Uint8Array(leftOverBuffer)[0];
       uint8[uint8.byteLength-1] = mergeBytes(uint8[uint8.byteLength-1],lastByte,8 - tailSize);
     }
-    await this._write(alignedBuffer,wholeBytesToOffset);
+    const result = await this._write(alignedBuffer,wholeBytesToOffset);
+    if(result === false)
+      throw new ReadOutsideSpaceBoundaryError(`
+        failed to write ${alignedBuffer.byteLength} bytes from space '${this.name}' from offset
+        ${wholeBytesToOffset} because it's out of bounds.
+      `)
     this.#locked = false;
   }
 }

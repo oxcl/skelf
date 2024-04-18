@@ -53,7 +53,16 @@ export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfBuffer | Array
 export interface ISkelfDataType<T> {
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
   write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<void>;
-  constraint : (value : T) => boolean;
+  constraint : (value : T) => boolean | string;
+}
+
+export interface ISkelfReader {
+  skip : (size : Offset) => Promise<ISkelfBuffer>;
+  read : (size : Offset) => Promise<ISkelfBuffer>;
+}
+
+export interface ISkelfWriter {
+  write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<ISkelfBuffer>;
 }
 
 export type Offset = number | string | [number,number] | { amount : number, unit : number};

@@ -8,15 +8,15 @@ export class BufferReadStream extends SkelfReadStream {
   private buffer : ArrayBuffer;
   static count : number = 0;
   private offset : number;
-  constructor(bufferLike : BufferLike, byteOffset : number = 0, name : string | undefined = undefined){
+  constructor(bufferLike : BufferLike, name : string | undefined = undefined){
     super();
     this.name = `wbufferStream:${name ?? BufferReadStream.count++}`;
     if(bufferLike instanceof Uint8Array){
       this.buffer = bufferLike.buffer;
-      this.offset = byteOffset + bufferLike.byteOffset;
+      this.offset = bufferLike.byteOffset;
     }
     else {
-      this.offset = byteOffset;
+      this.offset = 0;
       this.buffer = bufferLike;
       if("bitLength" in bufferLike)
         console.warn(`WARNING: SkelfBuffer is converted to ArrayBuffer when using it as a Read Stream.`)

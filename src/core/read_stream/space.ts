@@ -3,9 +3,13 @@ import {SkelfReadStream} from "skelf/read_stream"
 
 export class SpaceReadStream extends SkelfReadStream {
   readonly name : string;
-  constructor(private space : ISkelfSpace,private byteOffset : number = 0){
+  constructor(
+    private space : ISkelfSpace,
+    private byteOffset : number = 0,
+    name : string | undefined = undefined
+  ){
     super();
-    this.name = `rspaceStream:${space.name}`;
+    this.name = `rspaceStream:${name ?? space.name}`;
   }
   async _read(size : number){
     const result = await this.space.read(size,this.byteOffset);

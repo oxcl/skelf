@@ -1,5 +1,5 @@
 import {Offset,ISkelfReadStream} from "skelf/types"
-import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,EndOfStreamError} from "skelf/errors"
+import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedReadLimitError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer} from "skelf/utils"
 
 export abstract class SkelfReadStream implements ISkelfReadStream {
@@ -17,13 +17,12 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   private cacheByte : number = 0;
   private cacheSize : number = 0;
 
-  // these functions should be provided by the creator of the object to the constructor (or a child class)
-  // the arguments for these functions only accept whole byte values so all the logic for working with bits is
-  // abstracted away for the creator of the stream
+  // these functions should be provided by the child class the arguments for these functions only accept whole
+  // byte values so all the logic for working with bits is abstracted away for the creator of the stream.
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
   protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
-  protected async _skip(size : number) : Promise<boolean> {
+  protected async _skip(size : number) : Promise<boolean | undefined> {
     const result = await this._read(size);
     return (result !== null) && (result.byteLength === size);
   };
@@ -94,16 +93,16 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     // skip whole bytes
     const success = await this._skip(bytesToSkip);
-    if(!success)
-      throw new EndOfStreamError(`
-        stream '${this.name}' reached end its while trying to skip ${bytesToSkip} bytes from it.
+    if(success === false)
+      throw new StreamReachedReadLimitError(`
+        stream '${this.name}' reached its end or limit while trying to skip ${bytesToSkip} bytes.
       `);
     if(bytesToRead === 0) return;
     // read the leftover bits that should be skipped in the last byte and cache the rest
     const buffer = await this._read(bytesToRead);
     if(!buffer || buffer.byteLength < bytesToRead)
-      throw new EndOfStreamError(`
-        stream '${this.name}' reached end its while trying to read ${bytesToRead} bytes from it.
+      throw new StreamReachedReadLimitError(`
+        stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
     const lastByte = (new Uint8Array(buffer,buffer.byteLength-1))[0];
 
@@ -149,8 +148,8 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     const buffer = await this._read(bytesToRead);
     if(!buffer || buffer.byteLength < bytesToRead)
-      throw new EndOfStreamError(`
-        stream '${this.name}' reached end its while trying to read ${bytesToRead} bytes from it.
+      throw new StreamReachedReadLimit(`
+        stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
 
     if(this.cacheSize === 0 && sizeInBits % 8 === 0){

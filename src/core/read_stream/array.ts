@@ -1,11 +1,12 @@
 import {SkelfReadStream} from "skelf/read_stream"
 
+// use a javascript array as a read stream.
 export class ArrayReadStream extends SkelfReadStream {
   readonly name : string;
   static count : number = 0;
+  private offset : number = 0;
   constructor(
     private array : ReadonlyArray<number>,
-    private offset : number = 0,
     name : string | undefined = undefined
   ){
     super();
