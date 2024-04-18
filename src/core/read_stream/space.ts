@@ -5,7 +5,7 @@ import {offsetToBits} from "skelf/utils"
 export class SpaceReadStream extends SkelfReadStream {
   readonly name : string;
   private bitOffset : number;
-  constructor(private space : ISkelfSpace,offset : Offset = 0){
+  constructor(private space : ISkelfSpace,byteOffset : number = 0){
     super();
     this.name = `rspaceStream:${space.name}`;
     this.bitOffset = offsetToBits(offset);
