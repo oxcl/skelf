@@ -25,8 +25,10 @@
     "hex",
     "editor",
     "poke",
+    "GNU poke",
     "kaitai",
-    "struct"
+    "struct",
+    "kaitai struct"
   ],
   "author": "oxcl",
   "license": "LGPL-3.0-or-later",
@@ -36,12 +38,13 @@
   },
   "exports": {
     ".": "./dist/index.js",
-    "./units": "./dist/units.js",
-    "./errors": "./dist/errors.js",
-    "./types": "./dist/types.js",
     "./space": "./dist/space.js",
     "./read_stream": "./dist/read_stream.js",
     "./write_stream": "./dist/write_stream.js",
+    "./data_type": "./dist/data_type.js",
+    "./types": "./dist/types.js",
+    "./units": "./dist/units.js",
+    "./errors": "./dist/errors.js",
     "./utils": "./dist/utils.js",
     "./core": "./dist/core/index.js",
     "./common": "./dist/common/index.js",

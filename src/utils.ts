@@ -1,5 +1,8 @@
 import {ISkelfBuffer,Offset} from "skelf/types"
 import {InvalidOffsetError,SkelfError,InvalidArgumentError} from "skelf/errors"
+import {SkelfSpace} from "skelf/space"
+import {SkelfReadStream} from "skelf/read_stream"
+import {SkelfWriteStream} from "skelf/write_stream"
 import units from "skelf/units"
 
 // merge two bytes into one based by defining the bit size of the head
@@ -137,4 +140,13 @@ export function convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
 
 export function groom(str : string){
   return str.replace(/\n[ \t]+/g," ");
+}
+export function isSpace(obj : any){
+  return (obj instanceof SkelfSpace) ||( typeof obj === "object" && "read" in obj && "write" in obj);
+}
+export function isReadStream(obj : any){
+  return (obj instanceof SkelfReadStream) || (typeof obj === "object" && "read" in obj && "skip" in obj);
+}
+export function isWriteStream(obj : any){
+  return (obj instanceof SkelfWriteStream) || (typeof obj === "object" && "write" in obj && "flush" in obj);
 }
