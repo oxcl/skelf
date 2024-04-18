@@ -23,14 +23,14 @@ export class BufferReadStream extends SkelfReadStream {
     }
   }
   async _read(size : number){
-    if(size + this.offset >= buffer.length)
+    if(size + this.offset >= this.buffer.byteLength)
       return null;
     const result = this.buffer.slice(this.offset,this.offset + size);
     this.offset += size;
     return result;
   }
-  async _skip(size : number){
-    if(size + this.offset > buffer.length)
+  override async _skip(size : number){
+    if(size + this.offset > this.buffer.byteLength)
       return false;
     this.offset += size;
     return true;

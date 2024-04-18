@@ -5,27 +5,26 @@ type BufferLike = ArrayBuffer | ISkelfBuffer | Uint8Array | Buffer;
 
 export class BufferWriteStream extends SkelfWriteStream {
   readonly name : string;
-  private buffer : ArrayBuffer;
-  private bitOffset : number;
+  private uint8 : Uint8Array;
   static count : number = 0;
-  constructor(bufferLike : BufferLike,offest : Offset = 0,name : string | undefined = undefined){
+  constructor(bufferLike : BufferLike,private byteOffset : number = 0,name : string | undefined = undefined){
     super();
     this.name = `wbufferStream:${name ?? BufferWriteStream.count++}`;
-    const offsetInBits = offsetToBits(offset);
     if(bufferLike instanceof Uint8Array){
-      this.bitOffset = bufferLike.byteOffset*8 + offsetInBits;
-      this.buffer = bufferLike.buffer;
-    }
-    else if("bitLength" in bufferLike){
-      this.bitOffset = ((bufferLike.byteLength*8 - bufferLike.bitLength) % 8 ) + offsetInBits;
-      this.buffer = bufferLike
+      this.uint8 = bufferLike;
     }
     else {
-      this.bitOffset = offsetInBits;
-      this.buffer = buffer;
+      this.uint8 = new Uint8Array(bufferLike);
+      if("bitLength" in bufferLike){
+        console.warn(`WARNING: SkelfBuffer is converted to ArrayBuffer when using it as a Write Stream.`)
+      }
     }
   }
-  _write(buffer : ArrayBuffer){
-    // TODO
+  async _write(buffer : ArrayBuffer){
+    const newBytes = new Uint8Array(buffer);
+    for(let i=0;i<newBytes.byteLength;i++){
+      this.uint8[this.byteOffset + i] = newBytes[i];
+    }
+    this.byteOffset += newBytes.byteLength;
   }
 }

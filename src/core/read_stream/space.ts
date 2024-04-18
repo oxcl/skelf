@@ -1,23 +1,20 @@
 import {ISkelfSpace,ISkelfReadStream,Offset} from "skelf/types"
 import {SkelfReadStream} from "skelf/read_stream"
-import {offsetToBits} from "skelf/utils"
 
 export class SpaceReadStream extends SkelfReadStream {
   readonly name : string;
-  private bitOffset : number;
-  constructor(private space : ISkelfSpace,byteOffset : number = 0){
+  constructor(private space : ISkelfSpace,private byteOffset : number = 0){
     super();
     this.name = `rspaceStream:${space.name}`;
-    this.bitOffset = offsetToBits(offset);
   }
   async _read(size : number){
-    const result = await this.space.read(size,this.bitOffset);
-    this.bitOffset += size*8;
+    const result = await this.space.read(size,this.byteOffset);
+    this.byteOffset += size;
     return result;
   }
 
   override async _skip(size : number){
-    this.bitOffset += size*8;
+    this.byteOffset += size;
     return true;
   }
 }

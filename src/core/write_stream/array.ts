@@ -2,14 +2,22 @@ import {ISkelfBuffer} from "skelf/types"
 import {SkelfWriteStream} from "skelf/write_stream"
 import {offsetToBits} from "skelf/utils"
 
-export class BufferWriteStream extends SkelfWriteStream {
+export class ArrayWriteStream extends SkelfWriteStream {
   readonly name : string;
-  private bitOffset : number;
   static count : number = 0;
-  constructor(array : number[], byteOffset : number = 0){
+  constructor(
+    public array : number[] = [],
+    private offset : number = 0,
+    name : string | undefined = undefined
+  ){
     super();
+    this.name = `warrayStream:${name ?? ArrayWriteStream.count++}`;
   }
-  _write(buffer : ArrayBuffer){
-    // TODO
+  async _write(buffer : ArrayBuffer){
+    const uint8 = new Uint8Array(buffer);
+    for(let i=0;i<buffer.byteLength;i++){
+      this.array[this.offset + i] = uint8[i];
+    }
+    this.offset += buffer.byteLength;
   }
 }
