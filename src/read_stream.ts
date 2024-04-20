@@ -22,7 +22,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
   // data at the beginning of the source and pretend it does not exists. most of the time this isn't necessary.
   // so the default value for it is 0.
-  protected readonly initialOffsetBits : number = 0;
+  protected initialOffsetBits : number = 0;
 
 
   // these functions should be provided by the child class the arguments for these functions only accept whole
@@ -158,7 +158,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     const buffer = await this._read(bytesToRead);
     if(!buffer || buffer.byteLength < bytesToRead)
-      throw new StreamReachedReadLimit(`
+      throw new StreamReachedReadLimitError(`
         stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
 

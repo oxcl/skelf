@@ -30,7 +30,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
   // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
   // data at the beginning of the source and pretend it does not exists. most of the time this isn't necessary.
   // so the default value for it is 0.
-  protected readonly initialOffsetBits : number = 0;
+  protected initialOffsetBits : number = 0;
 
   // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
@@ -38,7 +38,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
   protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer | null>;
-  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<boolean | undefined>;
+  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<boolean | void>;
 
   async init(){
     if(this.ready)

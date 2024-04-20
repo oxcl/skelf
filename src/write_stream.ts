@@ -1,5 +1,5 @@
 import {Offset,ISkelfBuffer,ISkelfWriteStream} from "skelf/types"
-import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedWriteError} from "skelf/errors"
+import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedWriteLimitError} from "skelf/errors"
 import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom} from "skelf/utils"
 
 export abstract class SkelfWriteStream implements ISkelfWriteStream {
@@ -22,7 +22,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
   // abstracted away for the creator of the stream
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected abstract _write(buffer : ArrayBuffer) : Promise<boolean | undefined>;
+  protected abstract _write(buffer : ArrayBuffer) : Promise<boolean | void>;
 
   async init(){
     if(this.ready)
@@ -87,7 +87,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     if(this.cacheSize === 0 && sizeInBits % 8 === 0){
       const result = await this._write(buffer);
       if(result === false)
-        throw new StreamReachedWriteLimit(`
+        throw new StreamReachedWriteLimitError(`
           stream '${this.name}' reached its end or limit while trying to write ${buffer.byteLength}
           bytes to it.
         `)
@@ -107,7 +107,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
 
     const result = await this._write(slicedBuffer);
     if(result === false)
-      throw new StreamReachedWriteLimit(`
+      throw new StreamReachedWriteLimitError(`
         stream '${this.name}' reached its end or limit while trying to write ${slicedBuffer.byteLength}
         bytes to it.
       `)
@@ -124,7 +124,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       ]).buffer
     )
     if(result === false)
-      throw new StreamReachedWriteLimit(`
+      throw new StreamReachedWriteLimitError(`
         stream '${this.name}' reached its end or limit while trying to flush it by writing a byte to it.
       `)
   }
