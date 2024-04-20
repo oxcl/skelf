@@ -1,6 +1,6 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,ISkelfInput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter} from "skelf/types"
-import {BufferSpace} "skelf/core"
-import {isSpace,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
+import {BufferSpace,ArraySpace,IteratorReadStream} "skelf/core"
+import {isSpace,offsetToBits,convertToSkelfBuffer,isBufferLike} from "skelf/utils"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
 // implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
 // of input and output types by converting them all into a simple ISkelfReadStream/ISkelfWriteStream.
@@ -11,7 +11,7 @@ import {isSpace,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
 type createDataTypeOptions<T> = {
   readonly name : string,
   readonly read : (reader : ISkelfReader) => Promise<T>,
-  readonly write : (value : T,writer : ISkelfWriter) => Promise<void>;
+  readonly write : (writer : ISkelfWriter,value : T) => Promise<void>;
   readonly constraint? : (value : T) => boolean | string | undefined;
 };
 
@@ -36,7 +36,6 @@ function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
     }
   } as ISkelfWriter;
 }
-
 async function getReaderFromStream(stream : ISkelfReadStream, offset : Offset){
   await stream.skip(offset);
   return {
@@ -65,14 +64,57 @@ async function getWriterFromStream(stream : ISkelfWriteStream, offset : Offset){
 export async function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDataType<T> {
   return {
     async read(input : ISkelfInput,offset : Offset = 0){
-      let offsetInBits = offsetToBits(offset); // initial offset
-      const reader : ISkelfReader = {
-        async read(size : Offset){
-          const sizeInBits = offsetToBits(size);
-
-          offsetInBits += sizeInBits;
-        }
+      let reader : ISkelfReader;
+      if(isSpace(input)){
+        reader = getReaderFromSpace(input,offset);
       }
+      else if(isReadStream(input)){
+        reader = await getReaderFromStream(input,offset);
+      }
+      else if(isBufferLike(input)){
+        const space = await new BufferSpace(input,options.name).init();
+        reader = await getReaderFromSpace(space,offset);
+      }
+      else if(Array.isArray(input)){
+        if(input.every(item => typeof item === "number"))
+          throw new UnknownInputForDataType(`
+            recieved an invalid array as input value for data type '${options.name}'
+            because some of it contains some non number values.
+          `);
+        const space = await new ArraySpace(input,options.name).init();
+        reader = await getReaderFromSpace(space,offset);
+      }
+      else if(typeof input === "function" || (typeof input === "object" && [Symbol.iterator] in input)){
+        const stream = await new IteratorReadStream(input,options.name).init();
+        reader = await getReaderFromStream(stream,offset);
+      }
+      else
+        throw new UnknownInputForDataType(`
+          recieved unknown input value '${input.toString()}' for data type '${options.name}'.
+        `);
+      return await options.read(reader);
+    },
+    async write(value : T, output  : ISkelfOutput, offset : Offset = 0){
+      let writer : ISkelfWriter;
+      if(isSpace(output)){
+        writer = getWriterFromSpace(input,offset);
+      }
+      else if(isWriteStream(output)){
+        writer = await getWriterFromWriteStream(output,offset);
+      }
+      else if(isBufferLike(output)){
+        const space = await new BufferSpace(output,options.name).init();
+        writer = getWriterFromSpace(space,offset);
+      }
+      else if(Array.isArray(output)){
+        const space = await new ArraySpace(output.options.name).init();
+        writer = getWriterFromSpace(space,offset);
+      }
+      else
+        throw new UnknownOutputForDataType(`
+          recieved unknown output value '${output.toString()}' for data type '${options.name}'.
+        `)
+      return await options.write(writer,value);
     },
     constraint(value : T){
       if(!options.constraint) return true;

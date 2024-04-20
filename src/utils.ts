@@ -141,12 +141,19 @@ export function convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
 export function groom(str : string){
   return str.replace(/\n[ \t]+/g," ");
 }
+
 export function isSpace(obj : any){
-  return (obj instanceof SkelfSpace) ||( typeof obj === "object" && "read" in obj && "write" in obj);
+  return (obj instanceof SkelfSpace) ||
+    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function");
 }
 export function isReadStream(obj : any){
-  return (obj instanceof SkelfReadStream) || (typeof obj === "object" && "read" in obj && "skip" in obj);
+  return (obj instanceof SkelfReadStream) ||
+    (typeof obj === "object" && typeof obj.read === "function" && obj.skip === "function");
 }
 export function isWriteStream(obj : any){
-  return (obj instanceof SkelfWriteStream) || (typeof obj === "object" && "write" in obj && "flush" in obj);
+  return (obj instanceof SkelfWriteStream) ||
+    (typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function");
+}
+export function isBufferLike(obj : any){
+  return obj instanceof ArrayBuffer || obj instanceof Uint8Array;
 }

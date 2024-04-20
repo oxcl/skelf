@@ -55,3 +55,10 @@ export class StreamReachedWriteLimitError extends SkelfError {
 export class StreamIsClosedError extends SkelfError {
   override name = "STREAM_IS_CLOSED_ERROR";
 }
+
+export class UnknownInputForDataType extends SkelfError {
+  override name = "UNKNOWN_INPUT_FOR_DATA_TYPE";
+}
+export class UnknownOutputForDataType extends SkelfError {
+  override name = "UNKNOWN_OUTPUT_FOR_DATA_TYPE";
+}

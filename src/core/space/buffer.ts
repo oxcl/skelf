@@ -1,5 +1,5 @@
 import {SkelfSpace} from "skelf/space"
-
+import {shiftUint8ByBits,cloneBuffer} from "skelf/utils"
 type BufferLike = ArrayBuffer | Uint8Array | ISkelfBuffer | Buffer;
 
 export class BufferSpace extends SkelfSpace {
@@ -13,12 +13,16 @@ export class BufferSpace extends SkelfSpace {
     if(bufferLike instanceof Uint8Array){
       this.buffer = bufferLike.buffer;
       this.byteOffset = bufferLike.byteOffset;
+      this.skipInitialOffset = false; // no need;
+    }
+    else if("bitLength" in (bufferLike as any)){
+      this.buffer = bufferLike;
+      this.byteOffset = 0;
+      this.initialOffsetBits = bufferLike.byteLengt*8 - bufferLike.bitLength;
     }
     else {
-      this.offset = 0;
+      this.byteOffset = 0;
       this.buffer = bufferLike;
-      if("bitLength" in bufferLike)
-        console.warn(`WARNING: SkelfBuffer is converted to ArrayBuffer when using it as a SkelfSpace.`)
     }
   }
   async _read(size : number,offset : number){

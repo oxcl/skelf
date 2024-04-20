@@ -25,6 +25,13 @@ export abstract class SkelfSpace implements ISkelfSpace {
   get closed(){ return this.#closed };
   #closed : boolean = false;
 
+
+  // sometimes when working with different sources and providers it is required to offset the data by a certain
+  // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
+  // data at the beginning of the source and pretend it does not exists. most of the time this isn't necessary.
+  // so the default value for it is 0.
+  protected readonly initialOffsetBits : number = 0;
+
   // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away for the creator of the space
@@ -82,7 +89,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
-    const totalBitsToOffset = offsetToBits(offset); // convert offset to bits
+    const totalBitsToOffset = offsetToBits(offset) + this.initialOffsetBits; // convert offset to bits
     const wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // calculate offset in whole bytes
     const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover offset bits
     // console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})
@@ -141,7 +148,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const bitLength = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
     //console.log({bitLength,buffer})
 
-    const totalBitsToOffset = offsetToBits(offset); // calculate offset size in bits
+    const totalBitsToOffset = offsetToBits(offset) + this.initialOffsetBits; // calculate offset size in bits
     let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // get offset in whole bytes
     const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover bits of the offset
     //console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})

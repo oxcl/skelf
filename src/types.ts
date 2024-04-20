@@ -46,9 +46,14 @@ export interface ISkelfBuffer extends ArrayBuffer {
   readonly bitLength : number;
 }
 
-export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfBuffer | ArrayBuffer | Uint8Array |  ReadonlyArray<number> | Iterator<number> | AsyncIterator<number> | Buffer | { [Symbol.iterator] : () => IterableIterator<number>}; // TODO: add Blob support
+export type SkelfInput = ISkelfSpace | ISkelfReadStream |
+  ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer | // TODO: add blob support
+  ReadonlyArray<number> |
+  Iterator<number> | AsyncIterator<number> | { [Symbol.iterator] : () => IterableIterator<number>};
 
-export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfBuffer | ArrayBuffer | Uint8Array | number[] | Buffer;
+export type SkelfOutput = ISkelfSpace | ISkelfWriteStream |
+  ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer |
+  number[];
 
 export interface ISkelfDataType<T> {
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
