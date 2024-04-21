@@ -62,3 +62,7 @@ export class UnknownInputForDataType extends SkelfError {
 export class UnknownOutputForDataType extends SkelfError {
   override name = "UNKNOWN_OUTPUT_FOR_DATA_TYPE";
 }
+
+export class InvalidIntegerSizeError extends SkelfError {
+  override name = "INVALID_INTEGER_SIZE";
+}

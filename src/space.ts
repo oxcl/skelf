@@ -89,33 +89,36 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
-    const totalBitsToOffset = offsetToBits(offset) + this.initialOffsetBits; // convert offset to bits
-    const wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // calculate offset in whole bytes
-    const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover offset bits
+    const offsetBits = offsetToBits(offset) + this.initialOffsetBits; // how many bits should be offseted
+    const offsetWholeBytes = Math.floor(offsetBits / 8); // how many whole bytes can be offseted
+    const leftoverOffsetBits = offsetBits % 8; // how bits that don't fit into a byte, should be offseted
     // console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})
 
-    const sizeInBits = offsetToBits(size); // convert size to bits
-    const bytesToRead = Math.ceil((leftoverBitsToOffset + sizeInBits) / 8) // how many bytes can cover all bits
-    const buffer = await this._read(bytesToRead,wholeBytesToOffset);
+    const sizeInBits = offsetToBits(size); // size of the buffer that should be read in bits
+
+    // calculate how many bytes should be read from stream to cover all the bits for the buffer even if it
+    // contains some extra bits, they will be zeroed out at the end.
+    const bytesToRead = Math.ceil((leftoverOffsetBits + sizeInBits) / 8);
+    const buffer = await this._read(bytesToRead,offsetWholeBytes);
     if(!buffer)
       throw new ReadOutsideSpaceBoundaryError(`
-        failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${wholeBytesToOffset} because
+        failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${offsetWholeBytes} because
         it's out of bounds.
       `)
     const uint8 = new Uint8Array(buffer);
 
-    // zero out the beginning of the first (most left) which doesn't include the desired bits
-    uint8[0] &= 0xFF >> leftoverBitsToOffset
+    // shift the array to the left to remove the leftover bits that were read but should be offseted.
+    shiftUint8ByBits(uint8,leftoverOffsetBits);
 
-    // calculate how many bits should be shifted to the right
-    const bitShift = (bytesToRead*8 - (leftoverBitsToOffset + sizeInBits)) % 8;
+    // shift bits in the last byte to the right to remove the extra bits that are not part of the buffer.
+    const bitShift = (8 - sizeInBits % 8) % 8;
+    uint8[uint8.byteLength-1] >>= bitShift;
 
-    shiftUint8ByBits(uint8,bitShift);
 
     this.#locked = false;
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
-    if(bitShift + leftoverBitsToOffset >= 8){
+    if(bitShift + leftoverOffsetBits >= 8){
       return convertToSkelfBuffer(uint8.slice(1).buffer,sizeInBits);
     }
     else {
