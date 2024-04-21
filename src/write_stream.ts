@@ -70,16 +70,9 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     this.#locked = true;
 
     const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
-    const sizeInBytes = Math.ceil(sizeInBits / 8)
+    const emtpySpace = buffer.byteLength*8 - sizeInBits;
 
     if(sizeInBits === 0){
-      this.#locked = false;
-      return;
-    }
-    if(this.cacheSize + sizeInBits < 8){
-      const byte = (new Uint8Array(buffer))[0];
-      this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
-      this.cacheSize += sizeInBits;
       this.#locked = false;
       return;
     }
@@ -95,14 +88,25 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       return;
     }
 
+    if(this.cacheSize + sizeInBits < 8){
+      const byte = (new Uint8Array(buffer))[0];
+      this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
+      this.cacheSize += sizeInBits;
+      this.#locked = false;
+      return;
+    }
+
+    const alignedBuffer = cloneBuffer(buffer);
+    const uint8 = new Uint8Array(slicedBuffer);
+    uint8[uint8.byteLength-1] <<= emtpySpace;
+
+
     const newCacheSize = (this.cacheSize + sizeInBits) % 8;
     const lastByte = (new Uint8Array(buffer))[buffer.byteLength-1];
     const newCache = (lastByte << (8-newCacheSize) ) & 0xFF;
 
-    const alignedBuffer = cloneBuffer(buffer);
     shiftUint8ByBits(new Uint8Array(alignedBuffer),newCacheSize);
     const slicedBuffer = (newCacheSize > this.cacheSize)? alignedBuffer.slice(1) : alignedBuffer;
-    const uint8 = new Uint8Array(slicedBuffer)
     uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
 
     const result = await this._write(slicedBuffer);
