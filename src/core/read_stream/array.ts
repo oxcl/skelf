@@ -13,7 +13,7 @@ export class ArrayReadStream extends SkelfReadStream {
     this.name = `arrayStream:${name ?? ArrayReadStream.count++}`;
   }
   async _read(size : number){
-    if(this.offset + size >= this.array.length)
+    if(this.offset + size > this.array.length)
       return null;
     const result = new Uint8Array(this.array.slice(this.offset,this.offset + size)).buffer;
     this.offset += size;

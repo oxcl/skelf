@@ -65,15 +65,6 @@ export abstract class SkelfSpace implements ISkelfSpace {
     this.#closed = true;
   }
 
-  // when reading from a space if the data is either less that 8 bits or has bit leftovers (isn't whole byte),
-  // data will be read in whole bytes and then the extra bits will be zeroed and padded so that the resulting
-  // buffer is padded.
-  // for example:
-  // byte that is being read : 1 0 1 0 1 0 1 0
-  // asking for 1 bit  gives : 0 0 0 0 0 0 0 1
-  // asking for 2 bits gives : 0 0 0 0 0 0 1 0
-  // asking for 3 bits gives : 0 0 0 0 0 1 0 1
-  // and such
   async read(size : Offset, offset : Offset = 0){
     if(this.locked)
       throw new LockedSpaceError(`
@@ -108,7 +99,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const uint8 = new Uint8Array(buffer);
 
     // shift the array to the left to remove the leftover bits that were read but should be offseted.
-    shiftUint8ByBits(uint8,leftoverOffsetBits);
+    shiftUint8ByBits(uint8,-leftoverOffsetBits);
 
     // shift bits in the last byte to the right to remove the extra bits that are not part of the buffer.
     const bitShift = (8 - sizeInBits % 8) % 8;
@@ -126,11 +117,6 @@ export abstract class SkelfSpace implements ISkelfSpace {
     }
   }
 
-  // when writing to a space with data that is less than 1 byte or has leftover bits (not whole bytes), we
-  // have to first read the first and last byte from the space if neccessarry, so that we can add the
-  // individual bits in our data to the space without loosing the rest of the bits in those bytes.
-  // the buffer argument is assumed to be correctly padded so that leftover bits are stored on the most
-  // significant bits of the last byte (most left).
   async write(buffer : ISkelfBuffer | ArrayBuffer,offset : Offset = 0){
     if(this.locked)
       throw new LockedSpaceError(`
@@ -148,72 +134,72 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
     // bitLength is assumed to be the length of the whole Array
-    const bitLength = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
-    //console.log({bitLength,buffer})
+    const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
+    //console.log({sizeInBits,buffer})
 
-    const totalBitsToOffset = offsetToBits(offset) + this.initialOffsetBits; // calculate offset size in bits
-    let wholeBytesToOffset = Math.floor(totalBitsToOffset / 8); // get offset in whole bytes
-    const leftoverBitsToOffset = totalBitsToOffset % 8; // calculate the leftover bits of the offset
-    //console.log({totalBitsToOffset,wholeBytesToOffset,leftoverBitsToOffset})
+    const offsetBits = offsetToBits(offset) + this.initialOffsetBits; // how many bits shoulud be offseted
+    const offsetWholeBytes = Math.floor(offsetBits / 8); // how many bytes can be offseted as whole
+
+    // calculate how many offset bits are left over after whole bytes are offseted. these bits should be merged
+    // in the first byte of the buffer we want to write. so it's kind of like the head of the buffer
+    const headSize = offsetBits % 8;
+
+    // calculate how many bits from the space should be merged with the last byte of the buffer so that original
+    // bits in the space remain the same after merging bits in the buffer.
+    const tailSize = (8 - ((headSize + sizeInBits) % 8)) % 8;
+    //console.log({offsetBits,headSize,tailSize})
 
     // if the operation is in whole bytes without any leftovers, just write the buffer to space and return
-    if(leftoverBitsToOffset === 0 && bitLength % 8 === 0){
-      const result = await this._write(buffer,wholeBytesToOffset);
+    if(headSize === 0 && tailSize === 0){
+      const result = await this._write(buffer,offsetWholeBytes);
       if(result === false)
         throw new ReadOutsideSpaceBoundaryError(`
-          failed to write ${buffer.byteLength} bytes to space '${this.name}' from offset ${wholeBytesToOffset}
+          failed to write ${buffer.byteLength} bytes to space '${this.name}' from offset ${offsetWholeBytes}
           because it's out of bounds.
         `)
       this.#locked = false;
       return;
     }
 
-    // the padding in the buffer argument and the padding that is required for the space (with the bit offset)
-    // should be aligned so that if the write operation should begin from the nth bit of a byte in the space,
-    // the buffer is padded with n empty bits to the right.
-    const bitPadding = (buffer.byteLength*8 - bitLength) % 8;
-    const alignmentShift = leftoverBitsToOffset - bitPadding;
-    //console.log({bitPadding,alignmentShift})
+    // since all buffers in javascript are represented as byte arrays and not bits when working with bits there
+    // is usually some empty space in the buffer which can be used to inject heads and tails. it should be
+    // checked if there is enough space for the head and tail, and if not the buffer will be expanded by one
+    // byte
+    const emptySpace = buffer.byteLength*8 - sizeInBits;
 
-    // if the buffer should be shifted to the right one extra byte should be added to the right of the buffer
-    // so that bits are not lost due to overflowing
-    const expand = (alignmentShift > 0) ? +1 : 0;
-    const alignedBuffer = cloneBuffer(buffer,expand);
-    const uint8 = new Uint8Array(alignedBuffer);
-    shiftUint8ByBits(uint8, alignmentShift);
-    //console.log({expand,uint8})
+    const clonedBuffer = cloneBuffer(buffer,headSize > emptySpace ? 1 : 0);
+    const uint8 = new Uint8Array(clonedBuffer)
+    shiftUint8ByBits(uint8,headSize - emptySpace);
 
-    // merge the first byte with the byte in the space if neccessary
-    if(leftoverBitsToOffset !== 0){
-      const leftOverBuffer = await this._read(1,wholeBytesToOffset);
+    // inject head
+    if(headSize > 0){
+      const leftOverBuffer = await this._read(1,offsetWholeBytes);
       if(!leftOverBuffer)
         throw new ReadOutsideSpaceBoundaryError(`
-          failed to read 1 byte from space '${this.name}' from offset ${wholeBytesToOffset} because it's out
+          failed to read 1 byte from space '${this.name}' from offset ${offsetWholeBytes} because it's out
           of bounds.
         `)
       const firstByte = new Uint8Array(leftOverBuffer)[0];
-      uint8[0] = mergeBytes(firstByte,uint8[0],leftoverBitsToOffset);
-      //console.log({firstByte,uint8})
+      uint8[0] = mergeBytes(firstByte,uint8[0],headSize);
     }
 
-    // merge the last byte with the byte in the space if neccessary
-    if(alignmentShift !== 0){
-      // how many bits should be taken from the last byte (most right byte) and merged with our buffer
-      const tailSize = (8 - alignmentShift) % 8;
-      const leftOverBuffer = await this._read(1,wholeBytesToOffset + uint8.byteLength-1);
+    // inject tail
+    if(tailSize > 0){
+      const leftOverBuffer = await this._read(1,offsetWholeBytes + uint8.byteLength-1);
       if(!leftOverBuffer)
         throw new ReadOutsideSpaceBoundaryError(`
-          failed to read 1 byte from space '${this.name}' from offset ${wholeBytesToOffset+uint8.byteLength-1}
+          failed to read 1 byte from space '${this.name}' from offset ${offsetWholeBytes+uint8.byteLength-1}
           because it's out of bounds.
         `)
       const lastByte = new Uint8Array(leftOverBuffer)[0];
       uint8[uint8.byteLength-1] = mergeBytes(uint8[uint8.byteLength-1],lastByte,8 - tailSize);
     }
-    const result = await this._write(alignedBuffer,wholeBytesToOffset);
+
+    const result = await this._write(clonedBuffer,offsetWholeBytes);
     if(result === false)
       throw new ReadOutsideSpaceBoundaryError(`
-        failed to write ${alignedBuffer.byteLength} bytes from space '${this.name}' from offset
-        ${wholeBytesToOffset} because it's out of bounds.
+        failed to write ${clonedBuffer.byteLength} bytes from space '${this.name}' from offset
+        ${offsetWholeBytes} because it's out of bounds.
       `)
     this.#locked = false;
   }
