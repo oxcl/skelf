@@ -6,7 +6,7 @@ export class ArrayWriteStream extends SkelfWriteStream {
   readonly name : string;
   static count : number = 0;
   constructor(
-    public array : number[] = [],
+    readonly array : number[] = [],
     private offset : number = 0,
     name : string | undefined = undefined
   ){

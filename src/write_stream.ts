@@ -70,7 +70,8 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     this.#locked = true;
 
     const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
-    const emtpySpace = buffer.byteLength*8 - sizeInBits;
+    const emptySpace = buffer.byteLength*8 - sizeInBits;
+    //console.log({sizeInBits,emptySpace})
 
     if(sizeInBits === 0){
       this.#locked = false;
@@ -97,29 +98,38 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     }
 
     const alignedBuffer = cloneBuffer(buffer);
-    const uint8 = new Uint8Array(slicedBuffer);
-    uint8[uint8.byteLength-1] <<= emtpySpace;
+    const uint8 = new Uint8Array(alignedBuffer);
+    uint8[uint8.byteLength-1] <<= emptySpace;
 
+    // caching leftover bits that will not fit in a whole byte
+    let finalBuffer : ArrayBuffer;
+    if(emptySpace > this.cacheSize){
+      shiftUint8ByBits(uint8,this.cacheSize);
+      uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
+      this.cacheSize = (8 - emptySpace) % 8;
+      this.cacheSize = uint8[uint8.byteLength-1];
+      finalBuffer = alignedBuffer.slice(1);
+    }
+    else{
+      const newCacheSize = (this.cacheSize + sizeInBits) % 8;
+      const leftoverBits = shiftUint8ByBits(uint8,this.cacheSize);
+      uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
+      this.cacheSize = newCacheSize;
+      this.cacheByte = leftoverBits;
+      finalBuffer = alignedBuffer;
+      console.log({newCacheSize,newCache : leftoverBits.toString(16),finalBuffer})
+    }
 
-    const newCacheSize = (this.cacheSize + sizeInBits) % 8;
-    const lastByte = (new Uint8Array(buffer))[buffer.byteLength-1];
-    const newCache = (lastByte << (8-newCacheSize) ) & 0xFF;
-
-    shiftUint8ByBits(new Uint8Array(alignedBuffer),newCacheSize);
-    const slicedBuffer = (newCacheSize > this.cacheSize)? alignedBuffer.slice(1) : alignedBuffer;
-    uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
-
-    const result = await this._write(slicedBuffer);
+    const result = await this._write(finalBuffer);
     if(result === false)
       throw new StreamReachedWriteLimitError(`
-        stream '${this.name}' reached its end or limit while trying to write ${slicedBuffer.byteLength}
+        stream '${this.name}' reached its end or limit while trying to write ${finalBuffer.byteLength}
         bytes to it.
       `)
-    this.cacheByte = newCache;
-    this.cacheSize = newCacheSize;
     this.#locked = false;
     return;
   }
+
   async flush(){
     if(this.cacheSize === 0) return;
     const result = await this._write(

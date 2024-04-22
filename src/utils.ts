@@ -108,7 +108,7 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
     throw new InvalidArgumentError(`
       shifting a uint8Array by more than 8 bits is not possible. shift: ${shift}, array: ${uint8}
     `);
-  if(shift === 0) return;
+  if(shift === 0) return 0;
   let leftoverOfPrevByte = 0, leftoverOfThisByte = 0;
   if(shift > 0){
     for(let i = 0;i < uint8.byteLength; i++) {
@@ -130,6 +130,7 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
       leftoverOfPrevByte = leftoverOfThisByte;
     }
   }
+  return leftoverOfPrevByte;
 }
 
 // wrap a ArrayBuffer object and turn it into a SkelfBuffer by adding the bitLength property.

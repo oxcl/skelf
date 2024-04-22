@@ -3,7 +3,7 @@ import {SkelfSpace} from "skelf/space"
 export class ArraySpace extends SkelfSpace {
   static count : number = 0;
   readonly name : string;
-  constructor(private array : number[], name : string | undefined = undefined){
+  constructor(readonly array : number[] = [], name : string | undefined = undefined){
     super();
     this.name = `arraySpace:${name ?? ArraySpace.count++}`;
   }

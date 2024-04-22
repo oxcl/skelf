@@ -1,8 +1,6 @@
-import {ArraySpace, ArrayReadStream} from "skelf"
-import {NodeFileSpace} from "skelf/node"
+import {int,uint,ArraySpace} from "skelf";
 
-const stream = await new ArrayReadStream([0xff,0xaa]).init();
 
-const buffer = await stream.read("9b");
+const space = await new ArraySpace([0xaa,0xff]).init();
 
-console.log(buffer);
+console.log(await int(9).read(space,"6b"))
