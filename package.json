@@ -42,6 +42,7 @@
     "./read_stream": "./dist/read_stream.js",
     "./write_stream": "./dist/write_stream.js",
     "./data_type": "./dist/data_type.js",
+    "./struct": "./dist/struct.js",
     "./types": "./dist/types.js",
     "./units": "./dist/units.js",
     "./errors": "./dist/errors.js",
