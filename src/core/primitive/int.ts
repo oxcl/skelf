@@ -95,9 +95,9 @@ function unsignedToSigned(unsigned : number,size : number){
 
 
 export const int      = (size : number) => createIntDataType(size,true,true,`int${size}`);
-export const uint     = (size : number) => createIntDataType(size,false,true,`int${size}`);
-export const intBE    = (size : number) => createIntDataType(size,true,false,`int${size}`);
-export const uintBE   = (size : number) => createIntDataType(size,false,false,`int${size}`);
+export const uint     = (size : number) => createIntDataType(size,false,true,`uint${size}`);
+export const intBE    = (size : number) => createIntDataType(size,true,false,`int${size}BE`);
+export const uintBE   = (size : number) => createIntDataType(size,false,false,`uint${size}BE`);
 
 export const int8     = int(8);
 export const uint8    = uint(8);
