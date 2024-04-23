@@ -14,74 +14,59 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
       size of ${signed ? "signed" : "unsigned"} integer must be equal to or between ${signed?2:1} and 32.
     `);
 
+
   let decodeFunction : (view : DataView) => number;
   let encodeFunction : (view : DataView,value : number) => void;
 
-  if(size <= 8 && signed){
-    decodeFunction = (view) => view.getInt8(0);
-    encodeFunction = (view,value) => view.setInt8(0,value);
-  }
-  else if(size <= 8 && !signed){
+  if(size <= 8){
     decodeFunction = (view) => view.getUint8(0);
     encodeFunction = (view,value) => view.setUint8(0,value);
   }
-  else if(size <= 16 && signed){
-    decodeFunction = (view) => view.getInt16(0,littleEndian);
-    encodeFunction = (view,value) => view.setInt16(0,value,littleEndian);
-  }
-  else if(size <= 16 && !signed){
+  else if(size <= 16){
     decodeFunction = (view) => view.getUint16(0,littleEndian);
     encodeFunction = (view,value) => view.setUint16(0,value,littleEndian);
   }
-  else if(size <= 24 && signed){
+  else if(size <= 24){
     if(littleEndian){
       encodeFunction = (view,value) => {
-        const signedValue = value >= 0 ? value : 0xFFFFFF + value + 1;
-        view.setUint16(0,signedValue & 0x00FFF,littleEndian);
-        view.setUint8(2,signedValue >> 16);
+        view.setUint16(0,value & 0x00FFF,littleEndian);
+        view.setUint8(2,value >> 16);
       }
-      decodeFunction = (view) => {
-        const value = view.getUint16(0,littleEndian) + view.getUint8(2) << 16;
-        if(value & 0x800000) return -(0xFFFFFF - value + 1)
-        else return value;
-      }
-    }
-    else {
-      encodeFunction = (view,value) => {
-        const signedValue = value >= 0 ? value : 0xFFFFFF + value + 1;
-        view.setUint16(1,signedValue & 0x00FFFF,littleEndian);
-        view.setUint8(0,signedValue >> 16);
-      }
-      decodeFunction = (view) => {
-        const value = view.getUint16(1,littleEndian) + view.getUint8(0) << 16;
-        if(value & 0x800000) return -(0xFFFFFF - value + 1)
-        else return value;
-      }
-    }
-  }
-  else if(size <= 24 && !signed){
-    if(littleEndian){
       decodeFunction = (view) => view.getUint16(0,littleEndian) + view.getUint8(2) << 16;
-      encodeFunction = (view,value) => {
-        view.setUint16(0,value & 0x00FFFF,littleEndian);
-        view.setUint8(2,value >>> 16);
-      }
     }
     else {
-      decodeFunction = (view) => view.getUint16(1,littleEndian) + view.getUint8(0) << 16;
       encodeFunction = (view,value) => {
         view.setUint16(1,value & 0x00FFFF,littleEndian);
-        view.setUint8(0,value >>> 16);
+        view.setUint8(0,value >> 16);
       }
+      decodeFunction = (view) => view.getUint16(1,littleEndian) + view.getUint8(0) << 16;
     }
   }
-  else if(size <= 32 && signed){
-    decodeFunction = (view) => view.getInt32(0,littleEndian);
-    encodeFunction = (view,value) => view.setInt32(0,value,littleEndian);
-  }
-  else if(size <= 32 && !signed){
+  else {
     decodeFunction = (view) => view.getUint32(0,littleEndian);
     encodeFunction = (view,value) => view.setUint32(0,value,littleEndian);
+  }
+
+  if(signed){
+    // try to use the native implementation for signed values if possible
+    if(size === 8){
+      decodeFunction = (view) => view.getInt8(0);
+      encodeFunction = (view,value) => view.setInt8(0,value);
+    }
+    else if(size === 16){
+      decodeFunction = (view) => view.getInt16(0,littleEndian);
+      encodeFunction = (view,value) => view.setInt16(0,value,littleEndian);
+    }
+    else if(size === 32){
+      decodeFunction = (view) => view.getInt32(0,littleEndian);
+      encodeFunction = (view,value) => view.setInt32(0,value,littleEndian);
+    }
+    else {
+      let encode = encodeFunction;
+      let decode = decodeFunction;
+      decodeFunction = (view) => unsignedToSigned(decode(view),size);
+      encodeFunction = (view,value) => encode(view,signedToUnsigned(value,size))
+    }
   }
 
   return createDataType<number>({
@@ -96,6 +81,16 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
       await writer.write(convertToSkelfBuffer(buffer,size));
     }
   })
+}
+
+
+function signedToUnsigned(signed : number,size : number){
+  if(signed >= 0) return signed;
+  else return (0xFFFFFFFF >> (32-size)) + signed;
+}
+function unsignedToSigned(unsigned : number,size : number){
+  if(unsigned & (1 << (size-1))) return -((0xFFFFFFFF >>> (32-size)) - unsigned + 1)
+  else return unsigned;
 }
 
 

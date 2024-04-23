@@ -83,7 +83,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const offsetBits = offsetToBits(offset) + this.initialOffsetBits; // how many bits should be offseted
     const offsetWholeBytes = Math.floor(offsetBits / 8); // how many whole bytes can be offseted
     const leftoverOffsetBits = offsetBits % 8; // how bits that don't fit into a byte, should be offseted
-    console.log({offsetBits,offsetWholeBytes,leftoverOffsetBits})
+    //console.log({offsetBits,offsetWholeBytes,leftoverOffsetBits})
 
     const sizeInBits = offsetToBits(size); // size of the buffer that should be read in bits
 
@@ -91,7 +91,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     // contains some extra bits, they will be zeroed out at the end.
     const bytesToRead = Math.ceil((leftoverOffsetBits + sizeInBits) / 8);
     const buffer = await this._read(bytesToRead,offsetWholeBytes);
-    console.log({sizeInBits,bytesToRead,buffer})
+    //console.log({sizeInBits,bytesToRead,buffer})
 
     if(!buffer)
       throw new ReadOutsideSpaceBoundaryError(`
@@ -102,7 +102,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // shift the array to the left to remove the leftover bits that were read but should be offseted.
     shiftUint8ByBits(uint8,-leftoverOffsetBits);
-    console.log({bufferAfterShift:buffer})
+    //console.log({bufferAfterShift:buffer})
 
     // shift bits in the last byte to the right to remove the extra bits that are not part of the buffer.
     const bitShift = (8 - (sizeInBits % 8)) % 8;
@@ -113,7 +113,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     else {
       uint8[uint8.byteLength-1] >>= bitShift;
     }
-    console.log({bufferAfterRemovingExtraBits:buffer})
+    //console.log({bufferAfterRemovingExtraBits:buffer})
 
 
     this.#locked = false;
