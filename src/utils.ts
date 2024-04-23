@@ -147,11 +147,11 @@ export function isSpace(obj : any){
   return (obj instanceof SkelfSpace) ||
     (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function");
 }
-export function isReadStream(obj : any){
+export function isReaderOrReadStream(obj : any){
   return (obj instanceof SkelfReadStream) ||
-    (typeof obj === "object" && typeof obj.read === "function" && obj.skip === "function");
+    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function");
 }
-export function isWriteStream(obj : any){
+export function isWriterOrWriteStream(obj : any){
   return (obj instanceof SkelfWriteStream) ||
     (typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function");
 }

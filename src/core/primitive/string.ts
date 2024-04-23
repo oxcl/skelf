@@ -1,4 +1,5 @@
 import {createDataType} from "skelf/data_type"
+import {ISkelfDataType,ISkelfReader} from "skelf/types"
 
 const decoder = new TextDecoder()
 const encoder = new TextEncoder();
@@ -20,3 +21,22 @@ export const cstring = createDataType<string>({
     await writer.write(new ArrayBuffer(1)); // write the terminating null character
   }
 })
+
+export function dynamicString(sizeDataType : ISkelfDataType<number>){
+  return createDataType<string>({
+    name: `dynamicString(${sizeDataType.name})`,
+    async write(writer,string){
+      const stringBuffer = encoder.encode(string).buffer;
+      const stringSize = stringBuffer.byteLength;
+      // pass the size of the string to the size data type to write it with the writer
+      await sizeDataType.write(stringSize,writer);
+
+      await writer.write(stringBuffer);
+    },
+    async read(reader){
+      const stringSize = await sizeDataType.read(reader);
+      const stringBuffer = await reader.read(stringSize);
+      return decoder.decode(stringBuffer);
+    }
+  })
+}

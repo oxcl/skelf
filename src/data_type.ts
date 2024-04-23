@@ -1,6 +1,6 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,SkelfInput,SkelfOutput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter,ISkelfBuffer} from "skelf/types"
 import {BufferSpace,ArraySpace,IteratorReadStream} from "skelf/core"
-import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
+import {isSpace,isReaderOrReadStream,isWriterOrWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
 import {UnknownInputForDataType,UnknownOutputForDataType} from "skelf/errors"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
 // implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
@@ -18,13 +18,14 @@ type createDataTypeOptions<T> = {
 
 export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDataType<T> {
   return {
+    name : options.name,
     async read(input : SkelfInput,offset : Offset = 0){
       let reader : ISkelfReader;
       if(isSpace(input)){
         reader = getReaderFromSpace(input as ISkelfSpace,offset);
       }
-      else if(isReadStream(input)){
-        reader = await getReaderFromStream(input as ISkelfReadStream,offset);
+      else if(isReaderOrReadStream(input)){
+        reader = await getReaderFromStream(input as ISkelfReadStream | ISkelfReader,offset);
       }
       else if(isBufferLike(input)){
         const space = await new BufferSpace(input as ArrayBuffer,options.name).init();
@@ -54,8 +55,8 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       if(isSpace(output)){
         writer = getWriterFromSpace(output as ISkelfSpace,offset);
       }
-      else if(isWriteStream(output)){
-        writer = await getWriterFromStream(output as ISkelfWriteStream,offset);
+      else if(isWriterOrWriteStream(output)){
+        writer = await getWriterFromStream(output as ISkelfWriteStream | ISkelfWriter,offset);
       }
       else if(isBufferLike(output)){
         const space = await new BufferSpace(output as ArrayBuffer,options.name).init();
@@ -98,10 +99,17 @@ function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
     async write(buffer : ISkelfBuffer | ArrayBuffer){
       await space.write(buffer,`${offset}b`);
       offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
+    },
+    async flush(){
+      if(offset % 8 === 0) return;
+      const flusher = convertToSkelfBuffer(new ArrayBuffer(1),offset % 8)
+      await space.write(flusher,`${offset}`);
+      offset += offset % 8;
     }
   } as ISkelfWriter;
 }
-async function getReaderFromStream(stream : ISkelfReadStream, offset : Offset){
+
+async function getReaderFromStream(stream : ISkelfReadStream | ISkelfReader, offset : Offset){
   await stream.skip(offset);
   return {
     async read(size : Offset){
@@ -113,7 +121,7 @@ async function getReaderFromStream(stream : ISkelfReadStream, offset : Offset){
   } as ISkelfReader;
 }
 
-async function getWriterFromStream(stream : ISkelfWriteStream, offset : Offset){
+async function getWriterFromStream(stream : ISkelfWriteStream | ISkelfWriter, offset : Offset){
   const offsetInBits = offsetToBits(offset);
   const offsetBuffer = new ArrayBuffer(Math.ceil(offsetInBits / 8));
   const offsetSkelfBuffer = convertToSkelfBuffer(offsetBuffer,offsetInBits);
@@ -121,6 +129,9 @@ async function getWriterFromStream(stream : ISkelfWriteStream, offset : Offset){
   return {
     async write(buffer : ArrayBuffer | ISkelfBuffer){
       return await stream.write(buffer);
+    },
+    async flush(){
+      return await stream.flush();
     }
   } as ISkelfWriter;
 }
