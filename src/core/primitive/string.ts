@@ -54,3 +54,22 @@ export function fixedString(size : number){
     }
   })
 }
+
+export function constString(constantString : string){
+  const constantBuffer = encoder.encode(constantString);
+  return createDataType<string>({
+    name: `constString("${constantString.slice(0,5)}${constantString.length > 5 ? "...":""}")`,
+    async read(reader){
+      const buffer = await reader.read(constantBuffer.byteLength);
+      return decoder.decode(buffer);
+    },
+    async write(writer,string){
+      await writer.write(constantBuffer);
+    },
+    constraint(string){
+      if(string !== constantString)
+        return `value of constant string '${this.name}' can only be '${constantString}' but recieved ${string}`
+      return true;
+    }
+  })
+}
