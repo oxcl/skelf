@@ -66,3 +66,7 @@ export class UnknownOutputForDataType extends SkelfError {
 export class InvalidIntegerSizeError extends SkelfError {
   override name = "INVALID_INTEGER_SIZE";
 }
+
+export class ConstraintError extends SkelfError {
+  override name = "CONSTRAINT_ERROR"
+}

@@ -1,7 +1,7 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,SkelfInput,SkelfOutput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter,ISkelfBuffer} from "skelf/types"
 import {BufferSpace,ArraySpace,IteratorReadStream} from "skelf/core"
-import {isSpace,isReaderOrReadStream,isWriterOrWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
-import {UnknownInputForDataType,UnknownOutputForDataType} from "skelf/errors"
+import {isSpace,isReaderOrReadStream,isWriterOrWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer,offsetToString} from "skelf/utils"
+import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError} from "skelf/errors"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
 // implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
 // of input and output types by converting them all into a simple ISkelfReadStream/ISkelfWriteStream.
@@ -48,9 +48,28 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
         throw new UnknownInputForDataType(`
           recieved unknown input value '${input.toString()}' for data type '${options.name}'.
         `);
-      return await options.read(reader);
+      const result = await options.read(reader);
+      if(options.constraint){
+        const constraintResult = options.constraint(result);
+        if(constraintResult !== true)
+          throw new ConstraintError(`
+            data type '${this.name}' which was being read from ${input} at ${offsetToString(offset)} but failed
+            to meet its constraint.
+            ${typeof constraintResult === 'string' ? constraintResult : ""}
+          `)
+      }
+      return result;
     },
     async write(value : T, output  : SkelfOutput, offset : Offset = 0){
+      if(options.constraint){
+        const constraintResult = options.constraint(value);
+        if(constraintResult !== true)
+          throw new ConstraintError(`
+            provided value for data type '${this.name}' cannot be written to ${output} at
+            ${offsetToString(offset)} because it does not meet its constraint.
+            ${typeof constraintResult === "string" ? constraintResult : ""}
+          `)
+      }
       let writer : ISkelfWriter;
       if(isSpace(output)){
         writer = getWriterFromSpace(output as ISkelfSpace,offset);
