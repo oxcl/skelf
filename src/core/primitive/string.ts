@@ -40,3 +40,17 @@ export function dynamicString(sizeDataType : ISkelfDataType<number>){
     }
   })
 }
+
+export function fixedString(size : number){
+  return createDataType<string>({
+    name: `fixedString(${size})`,
+    async read(reader){
+      const buffer = await reader.read(size);
+      return decoder.decode(new Uint8Array(buffer));
+    },
+    async write(writer,string){
+      const buffer = encoder.encode(string).buffer;
+      await writer.write(buffer);
+    }
+  })
+}
