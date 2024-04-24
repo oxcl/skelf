@@ -2,12 +2,18 @@ import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,ISkelfReader} from "skelf/types"
 import {ConstraintError} from "skelf/errors"
 
-const decoder = new TextDecoder()
+const decoder = new TextDecoder();
+function decode(buffer : ArrayBuffer){
+  return decoder.decode(buffer).replace("\x00","");
+}
 const encoder = new TextEncoder();
+function encode(string : string){
+  return encoder.encode(string);
+}
 
 export const cstring = createDataType<string>({
   name: "cstring",
-  async read(reader){
+  read: async function readCstring(reader){
     const arr : number[] = [];
     let char : number;
     while(true){
@@ -15,10 +21,10 @@ export const cstring = createDataType<string>({
       if(char === 0) break;
       arr.push(char);
     };
-    return decoder.decode(new Uint8Array(arr));
+    return decode(new Uint8Array(arr));
   },
-  async write(writer,value){
-    await writer.write(encoder.encode(value).buffer)
+  write: async function writeCstring(writer,value){
+    await writer.write(encode(value).buffer)
     await writer.write(new ArrayBuffer(1)); // write the terminating null character
   }
 })
@@ -26,18 +32,18 @@ export const cstring = createDataType<string>({
 export function dynamicString(sizeDataType : ISkelfDataType<number>){
   return createDataType<string>({
     name: `dynamicString(${sizeDataType.name})`,
-    async write(writer,string){
-      const stringBuffer = encoder.encode(string).buffer;
+    write: async function writeDynamicString(writer,string){
+      const stringBuffer = encode(string).buffer;
       const stringSize = stringBuffer.byteLength;
       // pass the size of the string to the size data type to write it with the writer
       await sizeDataType.write(stringSize,writer);
 
       await writer.write(stringBuffer);
     },
-    async read(reader){
+    read: async function readDynamicString(reader){
       const stringSize = await sizeDataType.read(reader);
       const stringBuffer = await reader.read(stringSize);
-      return decoder.decode(stringBuffer);
+      return decode(stringBuffer);
     }
   })
 }
@@ -45,12 +51,12 @@ export function dynamicString(sizeDataType : ISkelfDataType<number>){
 export function fixedString(size : number,filler : number | string | undefined = undefined){
   return createDataType<string>({
     name: `fixedString(${size})`,
-    async read(reader){
+    read: async function readFixedString(reader){
       const buffer = await reader.read(size);
-      return decoder.decode(new Uint8Array(buffer));
+      return decode(new Uint8Array(buffer));
     },
-    async write(writer,string){
-      const buffer = encoder.encode(string).buffer;
+    write: async function writeFixedString(writer,string){
+      const buffer = encode(string).buffer;
       if(buffer.byteLength > size)
         throw new ConstraintError(`
           '${string}' is too big for '${this.name}' because ${this.name} is a fixed string with the
@@ -75,19 +81,20 @@ export function fixedString(size : number,filler : number | string | undefined =
 }
 
 export function constString(constantString : string){
-  const constantBuffer = encoder.encode(constantString);
+  const constantBuffer = encode(constantString).buffer;
   return createDataType<string>({
     name: `constString("${constantString.slice(0,5)}${constantString.length > 5 ? "...":""}")`,
-    async read(reader){
+    read: async function readConstString(reader){
       const buffer = await reader.read(constantBuffer.byteLength);
-      return decoder.decode(buffer);
+      return decode(buffer);
     },
-    async write(writer,string){
+    write: async function writeConstString(writer,string){
       await writer.write(constantBuffer);
     },
-    constraint(string){
+    constraint: function constraintConstString(string){
       if(string !== constantString)
-        return `value of constant string '${this.name}' can only be '${constantString}' but recieved ${string}`
+        return `value of constant string '${this.name}' can only be '${constantString}' but '${string}' was
+        recieved instead.`
       return true;
     }
   })

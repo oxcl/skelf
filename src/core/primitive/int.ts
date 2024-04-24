@@ -71,11 +71,11 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
 
   return createDataType<number>({
     name : name,
-    async read(reader){
+    read: async function readInt(reader){
       const buffer = await reader.read(`${size}b`);
       return decodeFunction(new DataView(buffer));
     },
-    async write(writer,value){
+    write: async function writeInt(writer,value){
       const buffer = new ArrayBuffer(Math.ceil(size / 8));
       encodeFunction(new DataView(buffer),value);
       await writer.write(convertToSkelfBuffer(buffer,size));

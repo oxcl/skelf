@@ -4,21 +4,21 @@ import {createStruct,primitives} from "skelf"
 const space = await new NodeFileSpace("test.txt").init();
 
 const personStruct = createStruct("person",{
-  name: primitives.dynamicString(primitives.int8),
-  age : primitives.int8,
+  name: primitives.dynamicString(primitives.int(7)),
+  age : primitives.int(7),
   role : primitives.cstring
 })
 
 const companyStruct = createStruct("company",{
   name : primitives.fixedString(255,"\0"),
-  hasPhone : primitives.bool,
+  hasPhone : primitives.bitBool,
   phoneNumber : (struct)=>{
     if(struct.hasPhone) return primitives.fixedString(10)
     else return undefined
   },
   manager : personStruct,
-  workers : primitives.dynamicArray(primitives.int8,personStruct),
-  endMark : primitives.constString("END")
+  workers : primitives.dynamicArray(primitives.int(2),personStruct),
+  //endMark : primitives.constString("END")
 })
 
 
@@ -46,10 +46,9 @@ const company = {
   phoneNumber : undefined,
   manager: ali,
   workers: [john,sarah],
-  endMark : "END"
 }
-
-await companyStruct.write(company,space);
+//await companyStruct.write(company,space)
+console.log(await companyStruct.read(space));
 
 
 

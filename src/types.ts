@@ -57,6 +57,7 @@ export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter |
 
 export interface ISkelfDataType<T> {
   name : string;
+  [Symbol.toStringTag] ?: string
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
   write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<void>;
   constraint : (value : T) => boolean | string;
@@ -65,6 +66,7 @@ export interface ISkelfDataType<T> {
 export interface ISkelfReader {
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
+  readonly readUntil : (delimiter : ArrayBuffer) => Promise<ArrayBuffer>
 }
 
 export interface ISkelfWriter {

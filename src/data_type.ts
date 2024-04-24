@@ -19,6 +19,7 @@ type createDataTypeOptions<T> = {
 export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDataType<T> {
   return {
     name : options.name,
+    [Symbol.toStringTag]: options.name,
     async read(input : SkelfInput,offset : Offset = 0){
       let reader : ISkelfReader;
       if(isSpace(input)){
@@ -97,7 +98,6 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
     }
   }
 }
-
 
 function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
   let offset = offsetToBits(initialOffset);
