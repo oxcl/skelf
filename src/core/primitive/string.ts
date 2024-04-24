@@ -1,5 +1,6 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,ISkelfReader} from "skelf/types"
+import {ConstraintError} from "skelf/errors"
 
 const decoder = new TextDecoder()
 const encoder = new TextEncoder();
@@ -41,7 +42,7 @@ export function dynamicString(sizeDataType : ISkelfDataType<number>){
   })
 }
 
-export function fixedString(size : number){
+export function fixedString(size : number,filler : number | string | undefined = undefined){
   return createDataType<string>({
     name: `fixedString(${size})`,
     async read(reader){
@@ -50,7 +51,25 @@ export function fixedString(size : number){
     },
     async write(writer,string){
       const buffer = encoder.encode(string).buffer;
+      if(buffer.byteLength > size)
+        throw new ConstraintError(`
+          '${string}' is too big for '${this.name}' because ${this.name} is a fixed string with the
+          size of ${size} bytes while the provided string is ${buffer.byteLength} in size
+        `)
+      if(buffer.byteLength < size && filler === undefined)
+        throw new ConstraintError(`
+          '${string} is too small for '${this.name}' since ${this.name} is a fixed string with the size of
+          ${size} but the provided string is only ${buffer.byteLength} bytes. you can fix this by making the
+          string match the size of the fixed string data type of provide a filler value for it so that
+          the empty bytes are filled with the specified filler
+        `)
+
       await writer.write(buffer);
+      if(buffer.byteLength < size){
+        const fillerNumber = typeof filler === "number" ? filler : (filler!.charCodeAt(0));
+        const fillerBuffer = new Uint8Array(new Array(size - buffer.byteLength).fill(fillerNumber)).buffer;
+        await writer.write(fillerBuffer)
+      }
     }
   })
 }
