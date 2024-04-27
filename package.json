@@ -46,6 +46,7 @@
     "./types": "./dist/types.js",
     "./units": "./dist/units.js",
     "./errors": "./dist/errors.js",
+    "./log": "./dist/log.js",
     "./utils": "./dist/utils.js",
     "./core": "./dist/core/index.js",
     "./common": "./dist/common/index.js",

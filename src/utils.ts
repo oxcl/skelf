@@ -140,7 +140,7 @@ export function convertToSkelfBuffer(buffer : ArrayBuffer,bitLength : number){
 };
 
 export function groom(str : string){
-  return str.replace(/\n[ \t]+/g," ");
+  return str.replace(/\n[ \t]+/g," ").trim();
 }
 
 export function isSpace(obj : any){

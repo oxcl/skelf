@@ -1,11 +1,14 @@
 import {ISkelfSpace,ISkelfBuffer,Offset} from "skelf/types"
 import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError} from "skelf/errors"
-import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer} from "skelf/utils"
+import {mergeBytes,offsetToBits,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer,offsetToString} from "skelf/utils"
+import Logger from "skelf/log"
+const logger = new Logger("space")
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
 // usually there are some common, operations (read hacks) that are needed to be done in spaces so that they are
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
 // spaces could be created easily without needing to worry about internal implementation details and dealing
 // with bits
+
 
 // an implementation of the ISpace interface to abstract some common operations away.
 export abstract class SkelfSpace implements ISkelfSpace {
@@ -45,6 +48,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceInitializedTwiceError(`initializing stream '${this.name} while already initialized.'`);
     if(this._init) await this._init();
     this.#ready = true;
+    logger.log(`space '${this.name}' is initialized.`);
     return this;
   }
 
@@ -63,6 +67,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceIsClosedError(`trying to close space '${this.name}' while it's already closed.`)
     if(this._close) await this._close();
     this.#closed = true;
+    logger.log(`space '${this.name}' is closed.`)
   }
 
   async read(size : Offset, offset : Offset = 0){
@@ -80,6 +85,10 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
+    logger.verbose(`
+      reading ${offsetToString(size)} at offset ${offsetToString(offset)} from space '${this.name}'...
+    `)
+
     const offsetBits = offsetToBits(offset) + this.initialOffsetBits; // how many bits should be offseted
     const offsetWholeBytes = Math.floor(offsetBits / 8); // how many whole bytes can be offseted
     const leftoverOffsetBits = offsetBits % 8; // how bits that don't fit into a byte, should be offseted
@@ -93,11 +102,17 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const buffer = await this._read(bytesToRead,offsetWholeBytes);
     //console.log({sizeInBits,bytesToRead,buffer})
 
+
     if(!buffer)
       throw new ReadOutsideSpaceBoundaryError(`
         failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${offsetWholeBytes} because
         it's out of bounds.
       `)
+
+    logger.verbose(`
+      fetched ${bytesToRead} bytes at offset ${offsetWholeBytes} from space using _read of '${this.name}'.
+    `)
+
     const uint8 = new Uint8Array(buffer);
 
     // shift the array to the left to remove the leftover bits that were read but should be offseted.
@@ -117,6 +132,9 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
 
     this.#locked = false;
+
+    logger.verbose(`succesful read from space '${this.name}'.`)
+
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
     if(bitShift - leftoverOffsetBits >= 8){
@@ -142,10 +160,16 @@ export abstract class SkelfSpace implements ISkelfSpace {
       throw new SpaceIsClosedError(`trying to write to space '${this.name}' while it's already closed.`)
     this.#locked = true;
 
+
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
     // bitLength is assumed to be the length of the whole Array
     const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
     //console.log({sizeInBits,buffer})
+
+    logger.verbose(`
+      writing ${sizeInBits} bits (${sizeInBits/8} bytes) at offset ${offsetToString(offset)}
+      to space '${this.name}'
+    `)
 
     const offsetBits = offsetToBits(offset) + this.initialOffsetBits; // how many bits shoulud be offseted
     const offsetWholeBytes = Math.floor(offsetBits / 8); // how many bytes can be offseted as whole
@@ -168,6 +192,10 @@ export abstract class SkelfSpace implements ISkelfSpace {
           because it's out of bounds.
         `)
       this.#locked = false;
+      logger.verbose(`
+        wrote ${buffer.byteLength} bytes at offset ${offsetWholeBytes}B to space '${this.name}' without any
+        bit manipulations.
+      `);
       return;
     }
 
@@ -183,6 +211,9 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // inject head
     if(headSize > 0){
+      logger.verbose(`
+        head byte for the buffer at offset '${offsetWholeBytes}' should be merged. head size: ${headSize}.
+      `)
       const leftOverBuffer = await this._read(1,offsetWholeBytes);
       if(!leftOverBuffer)
         throw new ReadOutsideSpaceBoundaryError(`
@@ -195,6 +226,10 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // inject tail
     if(tailSize > 0){
+      logger.verbose(`
+        tail byte for the buffer at offset '${offsetWholeBytes + uint8.byteLength-1}' should
+        be merged. tail size: ${tailSize}.
+      `)
       const leftOverBuffer = await this._read(1,offsetWholeBytes + uint8.byteLength-1);
       if(!leftOverBuffer)
         throw new ReadOutsideSpaceBoundaryError(`
@@ -206,11 +241,17 @@ export abstract class SkelfSpace implements ISkelfSpace {
     }
 
     const result = await this._write(clonedBuffer,offsetWholeBytes);
+
     if(result === false)
       throw new ReadOutsideSpaceBoundaryError(`
         failed to write ${clonedBuffer.byteLength} bytes from space '${this.name}' from offset
         ${offsetWholeBytes} because it's out of bounds.
       `)
+
+    logger.verbose(`
+      pushed a buffer with ${clonedBuffer.byteLength} bytes at offset ${offsetWholeBytes}
+      to space'${this.name}' _write function
+    `)
     this.#locked = false;
   }
 }
