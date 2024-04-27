@@ -1,4 +1,4 @@
-import {ISkelfBuffer,Offset} from "skelf/types"
+import {ISkelfBuffer,Offset,ISkelfReader,ISkelfReadStream} from "skelf/types"
 import {InvalidOffsetError,SkelfError,InvalidArgumentError} from "skelf/errors"
 import {SkelfSpace} from "skelf/space"
 import {SkelfReadStream} from "skelf/read_stream"
@@ -157,4 +157,30 @@ export function isWriterOrWriteStream(obj : any){
 }
 export function isBufferLike(obj : any){
   return obj instanceof ArrayBuffer || obj instanceof Uint8Array;
+}
+
+
+export async function readUntil(source : ISkelfReader | ISkelfReadStream,delimiter : ArrayBuffer){
+  const delimiterArray = new Uint8Array(delimiter);
+
+  const arr : number[] = [];
+  const cache : number[] = [];
+  let bytesMatched = 0;
+
+  while(bytesMatched === delimiterArray.length){
+    const number = new DataView(await source.read(1)).getUint8(0);
+    if(number === delimiterArray[bytesMatched]){
+      bytesMatched++;
+      cache.push(number);
+    }
+    else {
+      if(cache.length > 0){
+        bytesMatched = 0;
+        arr.push(...cache);
+        cache.length = 0;
+      }
+      arr.push(number);
+    }
+  }
+  return new Uint8Array(arr).buffer
 }

@@ -102,6 +102,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
 function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
   let offset = offsetToBits(initialOffset);
   return {
+    [Symbol.toStringTag]: "spaceToReaderWrapper",
     async read(size : Offset){
       const result = await space.read(size,`${offset}b`);
       offset += offsetToBits(size);
@@ -115,6 +116,7 @@ function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
 function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
   let offset = offsetToBits(initialOffset);
   return {
+    [Symbol.toStringTag]: "spaceToWriterWrapper",
     async write(buffer : ISkelfBuffer | ArrayBuffer){
       await space.write(buffer,`${offset}b`);
       offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
@@ -131,6 +133,7 @@ function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
 async function getReaderFromStream(stream : ISkelfReadStream | ISkelfReader, offset : Offset){
   await stream.skip(offset);
   return {
+    [Symbol.toStringTag]: "streamToReaderWrapper",
     async read(size : Offset){
       return await stream.read(size);
     },
@@ -146,6 +149,7 @@ async function getWriterFromStream(stream : ISkelfWriteStream | ISkelfWriter, of
   const offsetSkelfBuffer = convertToSkelfBuffer(offsetBuffer,offsetInBits);
   await stream.write(offsetSkelfBuffer);
   return {
+    [Symbol.toStringTag]: "streamToWriterWrapper",
     async write(buffer : ArrayBuffer | ISkelfBuffer){
       return await stream.write(buffer);
     },

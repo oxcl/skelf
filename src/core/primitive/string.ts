@@ -1,6 +1,7 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,ISkelfReader} from "skelf/types"
 import {ConstraintError} from "skelf/errors"
+import {readUntil} from "skelf/utils"
 
 const decoder = new TextDecoder();
 function decode(buffer : ArrayBuffer){
@@ -14,14 +15,8 @@ function encode(string : string){
 export const cstring = createDataType<string>({
   name: "cstring",
   read: async function readCstring(reader){
-    const arr : number[] = [];
-    let char : number;
-    while(true){
-      char = new DataView(await reader.read(1)).getUint8(0);
-      if(char === 0) break;
-      arr.push(char);
-    };
-    return decode(new Uint8Array(arr));
+    const buffer = await readUntil(reader,new ArrayBuffer(1)) // read until null
+    return decode(new Uint8Array(buffer));
   },
   write: async function writeCstring(writer,value){
     await writer.write(encode(value).buffer)

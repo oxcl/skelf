@@ -66,7 +66,6 @@ export interface ISkelfDataType<T> {
 export interface ISkelfReader {
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
-  readonly readUntil : (delimiter : ArrayBuffer) => Promise<ArrayBuffer>
 }
 
 export interface ISkelfWriter {
