@@ -14,10 +14,14 @@ type StructSchema<T extends Object> = {
   [k in keyof T]: ISkelfDataType<T[k]> | DecisionMaker<T[k]>
 }
 
+export function createStruct<T extends Object>(name : string, schema : StructSchema<T>);
+export function createStruct<T extends Object>(schema : StructSchema<T>);
 export function createStruct<T extends Object>(
-  name : string,
-  schema : StructSchema<T>
+  nameOrSchema : string | StructSchema<T>,
+  inputSchema? : StructSchema<T>
 ){
+  const schema = typeof nameOrSchema === "string" ? inputSchema! : nameOrSchema;
+  const name   = typeof nameOrSchema === "string" ? nameOrSchema : "noname";
   logger.log(`creating a new struct named '${name}'...`)
   return createDataType<T>({
     name,
@@ -29,9 +33,12 @@ export function createStruct<T extends Object>(
         if(!dataType) continue;
         logger.verbose(`
           reading property '${property}' of '${this.name}' as '${dataType.name}'
-          from reader '${reader.name}'...`)
+          from reader '${reader.name}'...
+        `)
         object[property] = await dataType.read(reader);
-        logger.verbose(`${this.name}[${property}] = '${object[property].toString().slice(0,100)}'`)
+        logger.verbose(`
+          ${this.name}[${property}] = '${(object[property] ?? "null").toString().slice(0,100)}'
+        `)
       }
       return object as T;
     },

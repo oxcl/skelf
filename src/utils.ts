@@ -195,3 +195,9 @@ export async function readUntil(
   }
   return new Uint8Array(arr).buffer
 }
+
+export async function readUntilEOF(
+  source : ISkelfReader | ISkelfReadStream,
+){
+  const arr : ArrayBuffer[] = [];
+}

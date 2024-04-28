@@ -79,7 +79,7 @@ export function fixedString(size : number,filler : number | string | undefined =
 export function constString(constantString : string){
   const constantBuffer = encode(constantString).buffer;
   return createDataType<string>({
-    name: `constString("${constantString.slice(0,5)}${constantString.length > 5 ? "...":""}")`,
+    name: `constString("${constantString.slice(0,15)}${constantString.length > 5 ? "...":""}")`,
     read: async function readConstString(reader){
       const buffer = await reader.read(constantBuffer.byteLength);
       return decode(buffer);
