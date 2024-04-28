@@ -23,6 +23,10 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
     size : options.size,
     [Symbol.toStringTag]: options.name,
     async read(input : SkelfInput,offset : Offset = 0){
+      const { result } = await this.readAndGetSize!(input,offset);
+      return result;
+    },
+    async readAndGetSize(input : SkelfInput,offset : Offset = 0){
       let reader : ISkelfReader;
       if(isReader(input)){
         reader = input as ISkelfReader;
@@ -60,7 +64,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
 
       const offsetBeforeRead = reader.offset;
       const result = await options.read(reader);
-      const actualSize = reader.offset - offsetBeforeRead;
+      const size = reader.offset - offsetBeforeRead;
       if(options.constraint){
         const constraintResult = options.constraint(result);
         if(constraintResult !== true){
@@ -71,13 +75,13 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
           `)
         }
       }
-      if(options.size && options.size !== actualSize){
+      if(options.size && options.size !== size){
         throw new UnexpectedSizeError(`
-          data type '${this.name}' was expected to be ${this.size} bits in size but ${actualSize} bits was
+          data type '${this.name}' was expected to be ${this.size} bits in size but ${size} bits was
           read by it. input: '${input}' at offset: ${offsetToString(offset)}.
         `)
       }
-      return result;
+      return {result,size};
     },
     async write(value : T, output  : SkelfOutput, offset : Offset = 0){
       if(options.constraint){
@@ -116,14 +120,14 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
         `)
       const offsetBeforeWrite = writer.offset;
       const result = await options.write(writer,value);
-      const actualSize = writer.offset - offsetBeforeWrite;
-      if(options.size && options.size !== actualSize){
+      const size = writer.offset - offsetBeforeWrite;
+      if(options.size && options.size !== size){
         throw new UnexpectedSizeError(`
-          data type '${this.name}' was expected to be '${this.size}' bits in size but it ${actualSize}
+          data type '${this.name}' was expected to be '${this.size}' bits in size but it ${size}
           bits was written by it. input: ${output} at ${offsetToString(offset)}.
         `)
       }
-      return result;
+      return size;
     },
     constraint(value : T){
       if(!options.constraint) return true;

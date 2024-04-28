@@ -8,7 +8,7 @@ type Distribute<T> = T extends any ? ISkelfDataType<T> : never
 type Object = {[k: string]: any}
 
 type DecisionMaker<T> = ((struct : any,offset : number) => Distribute<T> | T)
-  & ((struct : any) => Distribute<T> | null | undefined);
+  & ((struct : any, offset : number) => Distribute<T> | null | undefined);
 
 type StructSchema<T extends Object> = {
   [k in keyof T]: ISkelfDataType<T[k]> | DecisionMaker<T[k]>
@@ -28,8 +28,10 @@ export function createStruct<T extends Object>(
     async read(reader){
       logger.log(`reading a '${this.name}' from reader '${reader.name}'...`)
       const object : any = {};
+      const offsetBeforeRead = reader.offset;
       for(const [property,value] of Object.entries(schema)){
-        const dataType = (typeof value === "function") ? value(object as Partial<T>) : value;
+        const offset = reader.offset - offsetBeforeRead;
+        const dataType = (typeof value !== "function") ? value : value(object as Partial<T>,offset);
         if(!dataType) continue;
         logger.verbose(`
           reading property '${property}' of '${this.name}' as '${dataType.name}'
@@ -44,12 +46,14 @@ export function createStruct<T extends Object>(
     },
     async write(writer,object){
       logger.log(`writing a '${this.name}' to writer '${writer.name}'`)
+      const offsetBeforeWrite = writer.offset;
       for(const [property,value] of Object.entries(schema)){
-        const dataType = (typeof value === "function") ? value(object as Partial<T>) : value;
+        const offset = writer.offset - offsetBeforeWrite;
+        const dataType = (typeof value !== "function") ? value : value(object as Partial<T>,offset);
         if(!dataType) continue;
         logger.verbose(`
           writing property '${property}' of '${this.name}'
-          with value '${object[property].toString().slice(0,100)}'
+          with value '${(object[property] ?? "null").toString().slice(0,100)}'
           as '${dataType.name}'
           to '${writer.name}'...`)
         await dataType.write(object[property],writer);
