@@ -78,28 +78,35 @@ export function offsetToString(offset : Offset){
 }
 
 // copy a buffer into new buffer with optional expanded space at the end and offseted bytes in the beginning
-export function cloneBuffer(buffer : ArrayBuffer,expand : number = 0,offset : number = 0){
+export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0,offset : number = 0){
   if(expand === 0 && offset === 0)
-    return buffer.slice(0); // cloning the easy way
+    return sourceBuffer.slice(0); // cloning the easy way
 
-  const clonedBuffer = new ArrayBuffer(buffer.byteLength + expand);
+  const targetBuffer = new ArrayBuffer(sourceBuffer.byteLength + expand);
 
   // cloning the big portion
-  const bigPortionLength = Math.floor(clonedBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
-  const bigPortionArray = new Float64Array(buffer,0,bigPortionLength);
-  const dataView = new DataView(clonedBuffer,offset);
+  const bigPortionLength = Math.floor(sourceBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
+  const sourceDataView = new DataView(sourceBuffer,0,bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
+  const targetDataView = new DataView(
+    targetBuffer,
+    offset,
+    bigPortionLength * Float64Array.BYTES_PER_ELEMENT
+  );
 
-  for (let i = 0; i < bigPortionArray.length; i++)
-    dataView.setFloat64(i*Float64Array.BYTES_PER_ELEMENT,bigPortionArray[i]);
+  for (let i = 0; i < bigPortionLength; i++)
+    targetDataView.setFloat64(
+      i*Float64Array.BYTES_PER_ELEMENT,
+      sourceDataView.getFloat64(i)
+    );
 
   // copying over the remaining bytes in the small portion
-  const smallPortionArray = new Uint8Array(buffer, bigPortionLength * Float64Array.BYTES_PER_ELEMENT)
-  const uint8 = new Uint8Array(clonedBuffer,offset + bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
+  const sourceArray = new Uint8Array(sourceBuffer, bigPortionLength * Float64Array.BYTES_PER_ELEMENT)
+  const targetArray = new Uint8Array(targetBuffer,offset + bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
 
-  for (let i = 0; i < smallPortionArray.length; i++)
-    uint8[i] = smallPortionArray[i];
+  for (let i = 0; i < sourceArray.length; i++)
+    targetArray[i] = sourceArray[i];
 
-  return clonedBuffer;
+  return targetBuffer;
 }
 
 // shift a Uint8Array object by bits
@@ -160,14 +167,18 @@ export function isBufferLike(obj : any){
 }
 
 
-export async function readUntil(source : ISkelfReader | ISkelfReadStream,delimiter : ArrayBuffer){
+export async function readUntil(
+  source : ISkelfReader | ISkelfReadStream,
+  delimiter : ArrayBuffer,
+  limit : number = Infinity
+){
   const delimiterArray = new Uint8Array(delimiter);
 
   const arr : number[] = [];
   const cache : number[] = [];
   let bytesMatched = 0;
 
-  while(bytesMatched === delimiterArray.length){
+  while(bytesMatched < delimiterArray.byteLength && arr.length < limit){
     const number = new DataView(await source.read(1)).getUint8(0);
     if(number === delimiterArray[bytesMatched]){
       bytesMatched++;

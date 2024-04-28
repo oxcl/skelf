@@ -121,8 +121,12 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // shift bits in the last byte to the right to remove the extra bits that are not part of the buffer.
     const bitShift = (8 - (sizeInBits % 8)) % 8;
-    const bitsInTheLastByte = (leftoverOffsetBits + sizeInBits) % 8
-    if(bitShift - leftoverOffsetBits >= 8){
+
+    // sometimes after shifting bytes to offset the leftover bits causes the last byte to become empty
+    // this calculation controls if the last byte of the buffer should be trimmed or not
+    const shouldSlice = leftoverOffsetBits && leftoverOffsetBits >= (leftoverOffsetBits + sizeInBits) % 8;
+    //console.log({shouldSlice,bitShift})
+    if(shouldSlice){
       uint8[uint8.byteLength-2] >>= bitShift;
     }
     else {
@@ -137,8 +141,9 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
-    if(bitShift - leftoverOffsetBits >= 8){
-      return convertToSkelfBuffer(uint8.slice(1).buffer,sizeInBits);
+    //console.log({leftoverOffsetBits,bitShift,uint8})
+    if(shouldSlice){
+      return convertToSkelfBuffer(uint8.slice(0,-1).buffer,sizeInBits);
     }
     else {
       return convertToSkelfBuffer(buffer,sizeInBits);
@@ -159,7 +164,6 @@ export abstract class SkelfSpace implements ISkelfSpace {
     if(this.closed)
       throw new SpaceIsClosedError(`trying to write to space '${this.name}' while it's already closed.`)
     this.#locked = true;
-
 
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
     // bitLength is assumed to be the length of the whole Array
@@ -250,7 +254,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     logger.verbose(`
       pushed a buffer with ${clonedBuffer.byteLength} bytes at offset ${offsetWholeBytes}
-      to space'${this.name}' _write function
+      to space '${this.name}' _write function
     `)
     this.#locked = false;
   }

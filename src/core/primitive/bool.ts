@@ -2,9 +2,9 @@ import {createDataType} from "skelf/data_type"
 import {ConstraintError} from "skelf/errors"
 import {convertToSkelfBuffer} from "skelf/utils"
 
-function createBooleanType(size : number){
+function createBooleanType(size : number,name : string){
   return createDataType<boolean>({
-    name : "byteBool",
+    name,
     read: async function readBoolean(reader){
       const number = new Uint8Array((await reader.read(`${size}b`)))[0];
       if(number === 0) return false;
@@ -18,7 +18,7 @@ function createBooleanType(size : number){
   })
 }
 
-export const byteBool = createBooleanType(8);
+export const byteBool = createBooleanType(8,"byteBool");
 export const bool = byteBool;
 
-export const bitBool = createBooleanType(1);
+export const bitBool = createBooleanType(1,"bitBool");

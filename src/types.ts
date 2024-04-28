@@ -64,11 +64,13 @@ export interface ISkelfDataType<T> {
 }
 
 export interface ISkelfReader {
+  readonly name : string;
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
 }
 
 export interface ISkelfWriter {
+  readonly name : string;
   readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
   readonly flush : () => Promise<void>;
 }

@@ -76,6 +76,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
         writer = getWriterFromSpace(output as ISkelfSpace,offset);
       }
       else if(isWriterOrWriteStream(output)){
+
         writer = await getWriterFromStream(output as ISkelfWriteStream | ISkelfWriter,offset);
       }
       else if(isBufferLike(output)){
@@ -102,7 +103,8 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
 function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
   let offset = offsetToBits(initialOffset);
   return {
-    [Symbol.toStringTag]: "spaceToReaderWrapper",
+    [Symbol.toStringTag]: `spaceToReaderWrapper:${space.name}`,
+    name : space.name,
     async read(size : Offset){
       const result = await space.read(size,`${offset}b`);
       offset += offsetToBits(size);
@@ -113,10 +115,12 @@ function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
     }
   } as ISkelfReader;
 }
+
 function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
   let offset = offsetToBits(initialOffset);
   return {
-    [Symbol.toStringTag]: "spaceToWriterWrapper",
+    [Symbol.toStringTag]: `spaceToWriterWrapper:${space.name}`,
+    name: space.name,
     async write(buffer : ISkelfBuffer | ArrayBuffer){
       await space.write(buffer,`${offset}b`);
       offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
@@ -133,7 +137,8 @@ function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
 async function getReaderFromStream(stream : ISkelfReadStream | ISkelfReader, offset : Offset){
   await stream.skip(offset);
   return {
-    [Symbol.toStringTag]: "streamToReaderWrapper",
+    [Symbol.toStringTag]: `streamToReaderWrapper:${stream.name}`,
+    name: stream.name,
     async read(size : Offset){
       return await stream.read(size);
     },
@@ -145,11 +150,14 @@ async function getReaderFromStream(stream : ISkelfReadStream | ISkelfReader, off
 
 async function getWriterFromStream(stream : ISkelfWriteStream | ISkelfWriter, offset : Offset){
   const offsetInBits = offsetToBits(offset);
-  const offsetBuffer = new ArrayBuffer(Math.ceil(offsetInBits / 8));
-  const offsetSkelfBuffer = convertToSkelfBuffer(offsetBuffer,offsetInBits);
-  await stream.write(offsetSkelfBuffer);
+  if(offsetInBits){
+    const offsetBuffer = new ArrayBuffer(Math.ceil(offsetInBits / 8));
+    const offsetSkelfBuffer = convertToSkelfBuffer(offsetBuffer,offsetInBits);
+    await stream.write(offsetSkelfBuffer);
+  }
   return {
-    [Symbol.toStringTag]: "streamToWriterWrapper",
+    [Symbol.toStringTag]: `streamToWriterWrapper:${stream.name}`,
+    name : stream.name,
     async write(buffer : ArrayBuffer | ISkelfBuffer){
       return await stream.write(buffer);
     },

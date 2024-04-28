@@ -12,16 +12,16 @@ export class GenericSpace extends SkelfSpace {
   readonly name : string;
   private readonly options : SpaceConstructorOptions;
   protected override async _init(){
-    if(this.options.init) this.options.init();
+    if(this.options.init) await this.options.init();
   };
   protected override async _close(){
-    if(this.options.close) return this.options.close();
+    if(this.options.close) return await this.options.close();
   }
   protected override async _read(size : number, offset : number){
-    return this.options.read(size,offset)
+    return await this.options.read(size,offset)
   };
   protected override async _write(buffer : ArrayBuffer, offset : number){
-    return this.options.write(buffer, offset);
+    return await this.options.write(buffer, offset);
   }
 
   constructor(options : SpaceConstructorOptions){

@@ -10,6 +10,7 @@ export class Logger {
         configured before any logger objects are created.
       `)
     }
+    if(options.enable === false) return;
     if(options.level) Logger.options.level = options.level;
     else Logger.options.level = "warn";
 
@@ -47,28 +48,29 @@ export class Logger {
   verbose(message : string){
     if(!Logger.options.verbose) return;
     if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.verbose(logify(message,this.scope,"verbose",Logger.options.colors!))
+    Logger.options.verbose(logify(message,this.scope,"say",Logger.options.colors!))
   }
   log(message : string){
     if(!Logger.options.log) return;
     if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.log(logify(message,this.scope,"log    ",Logger.options.colors!));
+    Logger.options.log(logify(message,this.scope,"log",Logger.options.colors!));
   }
 
   warn(message : string){
     if(!Logger.options.warn) return;
     if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.warn(logify(message,this.scope,"warn   ",Logger.options.colors!));
+    Logger.options.warn(logify(message,this.scope,"warn",Logger.options.colors!));
   }
 
   error(message : string){
     if(!Logger.options.error) return;
     if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.error(logify(message,this.scope,"error  ",Logger.options.colors!));
+    Logger.options.error(logify(message,this.scope,"error",Logger.options.colors!));
   }
 }
 
 interface LoggerConfiguration {
+  enable ?: boolean;
   verbose ?: (message : string) => void;
   log ?: (message : string) => void;
   warn ?: (message : string) => void;
@@ -90,27 +92,28 @@ function levelStringToNumber(levelString : string){
 }
 
 function logify(message : string, scope : string, level : string,colors : boolean){
-  const nc = "\x1b[0m"
   const levelColor = getLevelColor(level);
-  const scopeColor = getScopeColor(level);
+  const scopeColor = getScopeColor(scope);
+  scope = `(${scope})`
+  const nc = "\x1b[0m"
   return `${colors?"\x1b[90m":""}[${new Date().toISOString()}]${colors?nc:""} ` +
-        `(${colors?scopeColor:""}${scope}${colors?nc:""}) ` +
-        `${colors?levelColor:""}${level.toUpperCase()}${colors?nc:""}: ` +
-        `${colors&&level==="verbose"?levelColor:""}${groom(message)}${colors?nc:""}`
+        `${colors?scopeColor:""}${scope.padEnd(9,' ')}${colors?nc:""} ` +
+        `${colors?levelColor:""}${level.toUpperCase().padEnd(5,' ')}${colors?nc:""}: ` +
+        `${colors&&level==="say"?levelColor:""}${groom(message)}${colors?nc:""}`
 }
 
 
 function getScopeColor(scope : string){
   if(scope === "space") return "\x1b[34m";
-  if(scope === "read_stream") return "\x1b[94m";
-  if(scope === "write_stream") return "\x1b[35m";
-  if(scope === "data_type") return "\x1b[32m";
+  if(scope === "rstream") return "\x1b[94m";
+  if(scope === "wstream") return "\x1b[35m";
+  if(scope === "type") return "\x1b[32m";
   if(scope === "struct") return "\x1b[33m"
   return "\x1b[36m"
 }
 
 function getLevelColor(level : string){
-  if(level === "verbose") return "\x1b[97m"
+  if(level === "say") return "\x1b[97m"
   if(level === "log") return "\x1b[0m"
   if(level === "warn") return "\x1b[33m"
   if(level === "error") return "\x1b[31m"

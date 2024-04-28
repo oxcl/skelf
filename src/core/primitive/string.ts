@@ -5,7 +5,7 @@ import {readUntil} from "skelf/utils"
 
 const decoder = new TextDecoder();
 function decode(buffer : ArrayBuffer){
-  return decoder.decode(buffer).replace("\x00","");
+  return decoder.decode(buffer);
 }
 const encoder = new TextEncoder();
 function encode(string : string){
@@ -19,7 +19,8 @@ export const cstring = createDataType<string>({
     return decode(new Uint8Array(buffer));
   },
   write: async function writeCstring(writer,value){
-    await writer.write(encode(value).buffer)
+    const buffer = encode(value).buffer
+    await writer.write(buffer);
     await writer.write(new ArrayBuffer(1)); // write the terminating null character
   }
 })
@@ -44,11 +45,13 @@ export function dynamicString(sizeDataType : ISkelfDataType<number>){
 }
 
 export function fixedString(size : number,filler : number | string | undefined = undefined){
+  const fillerNumber = !filler ? 0 : typeof filler === "number" ? filler : (filler!.charCodeAt(0));
   return createDataType<string>({
     name: `fixedString(${size})`,
     read: async function readFixedString(reader){
       const buffer = await reader.read(size);
-      return decode(new Uint8Array(buffer));
+      const uint8 = new Uint8Array(buffer);
+      return decode(uint8.slice(0,uint8.indexOf(fillerNumber)))
     },
     write: async function writeFixedString(writer,string){
       const buffer = encode(string).buffer;
@@ -64,10 +67,8 @@ export function fixedString(size : number,filler : number | string | undefined =
           string match the size of the fixed string data type of provide a filler value for it so that
           the empty bytes are filled with the specified filler
         `)
-
       await writer.write(buffer);
       if(buffer.byteLength < size){
-        const fillerNumber = typeof filler === "number" ? filler : (filler!.charCodeAt(0));
         const fillerBuffer = new Uint8Array(new Array(size - buffer.byteLength).fill(fillerNumber)).buffer;
         await writer.write(fillerBuffer)
       }
