@@ -1,7 +1,7 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,SkelfInput,SkelfOutput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter,ISkelfBuffer} from "skelf/types"
 import {BufferSpace,ArraySpace,IteratorReadStream} from "skelf/core"
-import {isSpace,isReaderOrReadStream,isWriterOrWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer,offsetToString} from "skelf/utils"
-import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError} from "skelf/errors"
+import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer,offsetToString,isWriter,isReader} from "skelf/utils"
+import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError,UnexpectedSizeError} from "skelf/errors"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
 // implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
 // of input and output types by converting them all into a simple ISkelfReadStream/ISkelfWriteStream.
@@ -11,6 +11,7 @@ import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError} from "
 
 type createDataTypeOptions<T> = {
   readonly name : string,
+  readonly size ?: number, // in bits
   readonly read : (reader : ISkelfReader) => Promise<T>,
   readonly write : (writer : ISkelfWriter,value : T) => Promise<void>;
   readonly constraint? : (value : T) => boolean | string | void;
@@ -19,18 +20,24 @@ type createDataTypeOptions<T> = {
 export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDataType<T> {
   return {
     name : options.name,
+    size : options.size,
     [Symbol.toStringTag]: options.name,
     async read(input : SkelfInput,offset : Offset = 0){
       let reader : ISkelfReader;
-      if(isSpace(input)){
-        reader = getReaderFromSpace(input as ISkelfSpace,offset);
+      if(isReader(input)){
+        reader = input as ISkelfReader;
+        await reader.skip(offset);
       }
-      else if(isReaderOrReadStream(input)){
-        reader = await getReaderFromStream(input as ISkelfReadStream | ISkelfReader,offset);
+      else if(isSpace(input)){
+        reader = new SpaceReader(input as ISkelfSpace,offset);
+      }
+      else if(isReadStream(input)){
+        reader = new StreamReader(input as ISkelfReadStream);
+        await reader.skip(offset);
       }
       else if(isBufferLike(input)){
         const space = await new BufferSpace(input as ArrayBuffer,options.name).init();
-        reader = await getReaderFromSpace(space,offset);
+        reader = new SpaceReader(space,offset);
       }
       else if(Array.isArray(input)){
         if(input.every(item => typeof item === "number"))
@@ -39,25 +46,36 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
             because some of it contains some non number values.
           `);
         const space = await new ArraySpace(input as number[],options.name).init();
-        reader = await getReaderFromSpace(space,offset);
+        reader = new SpaceReader(space,offset);
       }
       else if(typeof input === "function" || (typeof input === "object" && Symbol.iterator in input)){
         const stream = await new IteratorReadStream(input,options.name).init();
-        reader = await getReaderFromStream(stream,offset);
+        reader = new StreamReader(stream);
+        await reader.skip(offset)
       }
       else
         throw new UnknownInputForDataType(`
           recieved unknown input value '${input.toString()}' for data type '${options.name}'.
         `);
+
+      const offsetBeforeRead = reader.offset;
       const result = await options.read(reader);
+      const actualSize = reader.offset - offsetBeforeRead;
       if(options.constraint){
         const constraintResult = options.constraint(result);
-        if(constraintResult !== true)
+        if(constraintResult !== true){
           throw new ConstraintError(`
             data type '${this.name}' which was being read from ${input} at ${offsetToString(offset)} but failed
             to meet its constraint.
             ${typeof constraintResult === 'string' ? constraintResult : ""}
           `)
+        }
+      }
+      if(options.size && options.size !== actualSize){
+        throw new UnexpectedSizeError(`
+          data type '${this.name}' was expected to be ${this.size} bits in size but ${actualSize} bits was
+          read by it. input: '${input}' at offset: ${offsetToString(offset)}.
+        `)
       }
       return result;
     },
@@ -72,26 +90,40 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
           `)
       }
       let writer : ISkelfWriter;
-      if(isSpace(output)){
-        writer = getWriterFromSpace(output as ISkelfSpace,offset);
+      if(isWriter(output)){
+        writer = output as ISkelfWriter;
       }
-      else if(isWriterOrWriteStream(output)){
-
-        writer = await getWriterFromStream(output as ISkelfWriteStream | ISkelfWriter,offset);
+      else if(isSpace(output)){
+        writer = new SpaceWriter(output as ISkelfSpace,offset);
+      }
+      else if(isWriteStream(output)){
+        writer = new StreamWriter(output as ISkelfWriteStream);
+        const offsetInBits = offsetToBits(offset);
+        const fillerBuffer = new ArrayBuffer(offsetInBits/8)
+        await writer.write(convertToSkelfBuffer(fillerBuffer,offsetInBits));
       }
       else if(isBufferLike(output)){
         const space = await new BufferSpace(output as ArrayBuffer,options.name).init();
-        writer = getWriterFromSpace(space,offset);
+        writer = new SpaceWriter(space,offset);
       }
       else if(Array.isArray(output)){
         const space = await new ArraySpace(output as number[],options.name).init();
-        writer = getWriterFromSpace(space,offset);
+        writer = new SpaceWriter(space,offset);
       }
       else
         throw new UnknownOutputForDataType(`
           recieved unknown output value '${output.toString()}' for data type '${options.name}'.
         `)
-      return await options.write(writer,value);
+      const offsetBeforeWrite = writer.offset;
+      const result = await options.write(writer,value);
+      const actualSize = writer.offset - offsetBeforeWrite;
+      if(options.size && options.size !== actualSize){
+        throw new UnexpectedSizeError(`
+          data type '${this.name}' was expected to be '${this.size}' bits in size but it ${actualSize}
+          bits was written by it. input: ${output} at ${offsetToString(offset)}.
+        `)
+      }
+      return result;
     },
     constraint(value : T){
       if(!options.constraint) return true;
@@ -100,71 +132,78 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
   }
 }
 
-function getReaderFromSpace(space : ISkelfSpace, initialOffset : Offset){
-  let offset = offsetToBits(initialOffset);
-  return {
-    [Symbol.toStringTag]: `spaceToReaderWrapper:${space.name}`,
-    name : space.name,
-    async read(size : Offset){
-      const result = await space.read(size,`${offset}b`);
-      offset += offsetToBits(size);
-      return result;
-    },
-    async skip(size : Offset){
-      offset += offsetToBits(size);
-    }
-  } as ISkelfReader;
-}
-
-function getWriterFromSpace(space : ISkelfSpace, initialOffset : Offset){
-  let offset = offsetToBits(initialOffset);
-  return {
-    [Symbol.toStringTag]: `spaceToWriterWrapper:${space.name}`,
-    name: space.name,
-    async write(buffer : ISkelfBuffer | ArrayBuffer){
-      await space.write(buffer,`${offset}b`);
-      offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
-    },
-    async flush(){
-      if(offset % 8 === 0) return;
-      const flusher = convertToSkelfBuffer(new ArrayBuffer(1),offset % 8)
-      await space.write(flusher,`${offset}`);
-      offset += offset % 8;
-    }
-  } as ISkelfWriter;
-}
-
-async function getReaderFromStream(stream : ISkelfReadStream | ISkelfReader, offset : Offset){
-  await stream.skip(offset);
-  return {
-    [Symbol.toStringTag]: `streamToReaderWrapper:${stream.name}`,
-    name: stream.name,
-    async read(size : Offset){
-      return await stream.read(size);
-    },
-    async skip(size : Offset){
-      return await stream.skip(size);
-    }
-  } as ISkelfReader;
-}
-
-async function getWriterFromStream(stream : ISkelfWriteStream | ISkelfWriter, offset : Offset){
-  const offsetInBits = offsetToBits(offset);
-  if(offsetInBits){
-    const offsetBuffer = new ArrayBuffer(Math.ceil(offsetInBits / 8));
-    const offsetSkelfBuffer = convertToSkelfBuffer(offsetBuffer,offsetInBits);
-    await stream.write(offsetSkelfBuffer);
+class SpaceReader implements ISkelfReader {
+  readonly name : string;
+  #offset : number;
+  get offset(){ return this.#offset; }
+  constructor(private space : ISkelfSpace,initialOffset : Offset){
+    this.name = space.name;
+    this.#offset = offsetToBits(initialOffset);
   }
-  return {
-    [Symbol.toStringTag]: `streamToWriterWrapper:${stream.name}`,
-    name : stream.name,
-    async write(buffer : ArrayBuffer | ISkelfBuffer){
-      return await stream.write(buffer);
-    },
-    async flush(){
-      return await stream.flush();
-    }
-  } as ISkelfWriter;
+  async read(size : Offset){
+    const result = await this.space.read(size,`${this.offset}b`);
+    this.#offset += offsetToBits(size);
+    return result;
+  }
+  async skip(size : Offset){
+    this.#offset += offsetToBits(size);
+  }
+}
+
+class SpaceWriter implements ISkelfWriter {
+  readonly name: string;
+  #offset : number;
+  get offset(){ return this.#offset; };
+  constructor(private space : ISkelfSpace, initialOffset : Offset){
+    this.name = space.name;
+    this.#offset = offsetToBits(initialOffset);
+  }
+  async write(buffer : ISkelfBuffer | ArrayBuffer){
+    await this.space.write(buffer,`${this.offset}b`);
+    this.#offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
+  }
+  async flush(){
+    if(this.offset % 8 === 0) return;
+    const flusher = convertToSkelfBuffer(new ArrayBuffer(1),(8 - (this.offset % 8)) % 8)
+    await this.space.write(flusher,`${this.offset}`);
+    this.#offset += flusher.bitLength;
+  }
+}
+
+class StreamReader implements ISkelfReader {
+  readonly name : string;
+  #offset : number = 0;
+  get offset(){ return this.#offset }
+  constructor(private stream : ISkelfReadStream){
+    this.name = stream.name;
+  }
+  async read(size : Offset){
+    const result =  await this.stream.read(size);
+    this.#offset += offsetToBits(size);
+    return result;
+  }
+  async skip(size : Offset){
+    await this.stream.skip(size);
+    this.#offset += offsetToBits(size);
+  }
+}
+
+class StreamWriter implements ISkelfWriter {
+  readonly name : string;
+  #offset : number = 0;
+  get offset() { return this.#offset };
+  constructor(private stream : ISkelfWriteStream){
+    this.name = stream.name;
+  }
+  async write(buffer : ArrayBuffer | ISkelfBuffer){
+    const result = await this.stream.write(buffer);
+    this.#offset += (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
+    return result;
+  }
+  async flush(){
+    const bitsFlushed = await this.stream.flush();
+    this.#offset += bitsFlushed;
+  }
 }
 
 export default createDataType

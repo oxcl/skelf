@@ -70,6 +70,9 @@ export class InvalidIntegerSizeError extends SkelfError {
 export class ConstraintError extends SkelfError {
   override name = "CONSTRAINT_ERROR"
 }
+export class UnexpectedSizeError extends SkelfError {
+  override name = "BIGGER_THAN_EXPECTED_ERROR";
+}
 
 export class LoggerConfiguredTwiceError extends SkelfError {
   override name = "LOGGER_CONFIGURED_TWICE_ERROR"

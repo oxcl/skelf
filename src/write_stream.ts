@@ -131,16 +131,21 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
   }
 
   async flush(){
-    if(this.cacheSize === 0) return;
+    if(this.cacheSize === 0) return 0;
     const result = await this._write(
       new Uint8Array([
         mergeBytes(this.cacheByte,0x00,this.cacheSize)
       ]).buffer
     )
-    if(result === false)
+    if(result === false){
       throw new StreamReachedWriteLimitError(`
         stream '${this.name}' reached its end or limit while trying to flush it by writing a byte to it.
-      `)
+      `);
+    }
+    const bitsFlushed = 8 - this.cacheSize;
+    this.cacheSize = 0;
+    this.cacheByte = 0;
+    return bitsFlushed;
   }
 }
 export default SkelfWriteStream

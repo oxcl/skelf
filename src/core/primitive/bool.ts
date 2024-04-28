@@ -5,6 +5,7 @@ import {convertToSkelfBuffer} from "skelf/utils"
 function createBooleanType(size : number,name : string){
   return createDataType<boolean>({
     name,
+    size,
     read: async function readBoolean(reader){
       const number = new Uint8Array((await reader.read(`${size}b`)))[0];
       if(number === 0) return false;

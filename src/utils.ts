@@ -154,14 +154,24 @@ export function isSpace(obj : any){
   return (obj instanceof SkelfSpace) ||
     (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function");
 }
-export function isReaderOrReadStream(obj : any){
-  return (obj instanceof SkelfReadStream) ||
-    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function");
-}
-export function isWriterOrWriteStream(obj : any){
+export function isWriteStream(obj : any){
   return (obj instanceof SkelfWriteStream) ||
     (typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function");
 }
+export function isWriter(obj : any){
+  return typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function" &&
+    typeof obj.offset === "number";
+}
+
+export function isReadStream(obj : any){
+  return (obj instanceof SkelfReadStream) ||
+    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function");
+}
+export function isReader(obj :any){
+  return typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function" &&
+    typeof obj.offset === "number";
+}
+
 export function isBufferLike(obj : any){
   return obj instanceof ArrayBuffer || obj instanceof Uint8Array;
 }
@@ -194,10 +204,4 @@ export async function readUntil(
     }
   }
   return new Uint8Array(arr).buffer
-}
-
-export async function readUntilEOF(
-  source : ISkelfReader | ISkelfReadStream,
-){
-  const arr : ArrayBuffer[] = [];
 }

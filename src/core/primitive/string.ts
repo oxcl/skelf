@@ -48,6 +48,7 @@ export function fixedString(size : number,filler : number | string | undefined =
   const fillerNumber = !filler ? 0 : typeof filler === "number" ? filler : (filler!.charCodeAt(0));
   return createDataType<string>({
     name: `fixedString(${size})`,
+    size,
     read: async function readFixedString(reader){
       const buffer = await reader.read(size);
       const uint8 = new Uint8Array(buffer);
@@ -80,6 +81,7 @@ export function constString(constantString : string){
   const constantBuffer = encode(constantString).buffer;
   return createDataType<string>({
     name: `constString("${constantString.slice(0,15)}${constantString.length > 5 ? "...":""}")`,
+    size: constantBuffer.byteLength*8,
     read: async function readConstString(reader){
       const buffer = await reader.read(constantBuffer.byteLength);
       return decode(buffer);

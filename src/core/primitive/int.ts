@@ -71,6 +71,7 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
 
   return createDataType<number>({
     name : name,
+    size,
     read: async function readInt(reader){
       const buffer = await reader.read(`${size}b`);
       return decodeFunction(new DataView(buffer));

@@ -7,15 +7,15 @@ const logger = new Logger("struct");
 type Distribute<T> = T extends any ? ISkelfDataType<T> : never
 type Object = {[k: string]: any}
 
-type DecisionMaker<T> = ((struct : any) => Distribute<T> | T)
+type DecisionMaker<T> = ((struct : any,offset : number) => Distribute<T> | T)
   & ((struct : any) => Distribute<T> | null | undefined);
 
 type StructSchema<T extends Object> = {
   [k in keyof T]: ISkelfDataType<T[k]> | DecisionMaker<T[k]>
 }
 
-export function createStruct<T extends Object>(name : string, schema : StructSchema<T>);
-export function createStruct<T extends Object>(schema : StructSchema<T>);
+export function createStruct<T extends Object>(name : string, schema : StructSchema<T>) : ISkelfDataType<T>;
+export function createStruct<T extends Object>(schema : StructSchema<T>) : ISkelfDataType<T>;
 export function createStruct<T extends Object>(
   nameOrSchema : string | StructSchema<T>,
   inputSchema? : StructSchema<T>

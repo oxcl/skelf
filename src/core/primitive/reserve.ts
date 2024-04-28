@@ -1,22 +1,27 @@
+import {Offset,ISkelfBuffer} from "skelf/types"
 import {createDataType} from "skelf/data_type"
 import {ConstraintError} from "skelf/errors"
+import {offsetToString,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
 
-export function fixedReserve(size : number){
+export function fixedReserve(size : Offset){
+  const sizeInBits = offsetToBits(size)
   return createDataType<undefined>({
-    name : `fixedReserve(${size})`,
+    name : `fixedReserve(${offsetToString(size)})`,
+    size : sizeInBits,
     read: async function readFixedReserve(reader){
       await reader.skip(size);
     },
     write: async function writeFixedReserve(writer,value){
-      const emptyBuffer = new ArrayBuffer(size);
-      await writer.write(emptyBuffer);
+      const emptyBuffer = new ArrayBuffer(Math.ceil(sizeInBits/8));
+      await writer.write(convertToSkelfBuffer(emptyBuffer,sizeInBits));
     }
   })
 }
 
-export function strictReserve(size : number,filler : number = 0){
+export function strictReserve(size : Offset,filler : number = 0){
   return createDataType<undefined>({
     name: `strictReserve(${size})`,
+    size : offsetToBits(size),
     read: async function readStrictReserve(reader){
       const buffer = await reader.read(size);
       const uint8 = new Uint8Array(buffer);
@@ -28,8 +33,10 @@ export function strictReserve(size : number,filler : number = 0){
       }
     },
     write: async function writeStrictReserve(writer,value = undefined){
-      const filledBuffer = new Uint8Array(new Array(size).fill(filler)).buffer;
-      await writer.write(filledBuffer);
+      const sizeInBits = offsetToBits(size)
+      const bytesCeil = Math.ceil(sizeInBits/8);
+      const filledBuffer = new Uint8Array(new Array(bytesCeil).fill(filler)).buffer;
+      await writer.write(convertToSkelfBuffer(filledBuffer,sizeInBits));
     }
   })
 }

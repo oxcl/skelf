@@ -33,7 +33,7 @@ export interface ISkelfWriteStream {
   close : () => Promise<void>;
   init  : () => Promise<ISkelfWriteStream>;
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
-  flush : () => Promise<void>;
+  flush : () => Promise<number>;
 }
 
 // since ArrayBuffers don't have the capability to work with bits, SkelfBuffer is a simple wrapper around
@@ -57,20 +57,24 @@ export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter |
 
 export interface ISkelfDataType<T> {
   name : string;
-  [Symbol.toStringTag] ?: string
+  [Symbol.toStringTag] ?: string;
+  size? : number;
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
+  readAndGetSize ?: (input : SkelfInput,offset ? : Offset) => Promise<{result: T, size : number}>;
   write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<void>;
   constraint : (value : T) => boolean | string;
 }
 
 export interface ISkelfReader {
   readonly name : string;
+  readonly offset : number;
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
 }
 
 export interface ISkelfWriter {
   readonly name : string;
+  readonly offset : number;
   readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
   readonly flush : () => Promise<void>;
 }
