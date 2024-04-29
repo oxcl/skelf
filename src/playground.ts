@@ -1,5 +1,6 @@
 import {NodeFileSpace} from "skelf/node"
 import {createStruct,primitives,ConstraintError} from "skelf"
+import {RGB24} from "skelf/common"
 
 import Logger from "skelf/log"
 

@@ -120,6 +120,58 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     this.cacheByte = lastByte & (0xFF >> (8-this.cacheSize));
     this.#locked = false;
   }
+  async readUntilEnd(){
+    const CHUNK_SIZE = 100;
+    if(this.locked)
+      throw new LockedStreamError(`
+        trying to read from stream '${this.name}' while it's locked. this could be caused by a not awaited call
+        to a read/write method, which might be still pending.
+      `);
+    if(!this.ready)
+      throw new StreamIsNotReadyError(`
+        reading from stream '${this.name}' while it's not initialized. streams should be first initialized
+        with the init method before using them. this could be caused by a not awaited call to the init method.
+      `);
+    if(this.closed)
+      throw new StreamIsClosedError(`trying to read from stream '${this.name}' while it's already closed.`)
+    this.#locked = true;
+
+    const bufferArr : ArrayBuffer[] = [];
+    let chunk = await this._read(CHUNK_SIZE);
+    if(chunk === null){
+      throw new StreamReachedReadLimitError(`
+        failed to read stream '${this.name}' until the end because stream has already reached its end or limit
+      `);
+    }
+
+    do{
+      bufferArr.push(chunk);
+      chunk = await this._read(CHUNK_SIZE);
+    } while(chunk !== null);
+
+    const totalSize = bufferArr.reduce((acc,element)=>acc + element.byteLength,0);
+    const concatBuffer = new ArrayBuffer(totalSize + (this.cacheSize > 0 ? 1 : 0));
+    const targetArray = new Uint8Array(concatBuffer);
+    let bytesFilled = 0
+    if(this.cacheSize > 0){
+      targetArray[0] = this.cacheByte;
+      bytesFilled++;
+    }
+    for(const buffer of bufferArr){
+      const sourceArray = new Uint8Array(buffer);
+      for(let i=0;i<sourceArray.byteLength;i++){
+        targetArray[bytesFilled++] = sourceArray[i];
+      }
+    }
+    if(this.cacheSize > 0){
+      shiftUint8ByBits(targetArray,-(8-this.cacheSize));
+      targetArray[bytesFilled-1] >>= 8-this.cacheSize;
+    }
+    this.cacheByte = 0;
+    this.cacheSize = 0;
+    this.#locked = false;
+    return convertToSkelfBuffer(concatBuffer,totalSize*8+this.cacheSize);
+  }
 
   async read(size : Offset){
     if(this.locked)

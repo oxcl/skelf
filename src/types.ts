@@ -11,6 +11,7 @@ export interface ISkelfSpace {
   close : () => Promise<void>;
   init  : () => Promise<ISkelfSpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
+  readUntilEnd : (offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
 }
 
@@ -22,6 +23,7 @@ export interface ISkelfReadStream {
   close : () => Promise<void>;
   init  : () => Promise<ISkelfReadStream>;
   read  : (size : Offset) => Promise<ISkelfBuffer>;
+  readUntilEnd : () => Promise<ISkelfBuffer>;
   skip  : (size : Offset) => Promise<void>;
 }
 

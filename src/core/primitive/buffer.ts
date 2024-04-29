@@ -1,6 +1,6 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,Offset} from "skelf/types"
-import {offsetToString,offsetToBits} from "skelf/utils"
+import {offsetToString,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
 import {ISkelfBuffer} from "skelf/types"
 
 export function fixedBuffer(size : Offset){
@@ -9,7 +9,7 @@ export function fixedBuffer(size : Offset){
     name: `fixedBuffer(${offsetToString(size)})`,
     size : offsetInBits,
     read: async function readFixedBuffer(reader){
-      return await reader.read(size);
+      return convertToSkelfBuffer(await reader.read(size),offsetToBits(size)) as ISkelfBuffer;
     },
     write: async function writeFixedBuffer(writer,value){
       await writer.write(value);

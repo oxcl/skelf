@@ -10,8 +10,7 @@
     "dev": "nodemon --exec 'tsc && node .' -w src/",
     "run": "tsc && node .",
     "playground": "nodemon --exec 'tsc && node dist/playground.js' -w src/",
-    "playground:run": "tsc && node dist/playground.js",
-    "test": "echo 'no test yet'"
+    "playground:run": "tsc && node dist/playground.js"
   },
   "keywords": [
     "binary",

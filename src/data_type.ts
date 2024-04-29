@@ -149,6 +149,11 @@ class SpaceReader implements ISkelfReader {
     this.#offset += offsetToBits(size);
     return result;
   }
+  //async readUntilEnd(){
+  //  const result = await this.space.readUntilEnd(`${this.offset}b`);
+  //  this.#offset += result.bitLength;
+  //  return result;
+  //}
   async skip(size : Offset){
     this.#offset += offsetToBits(size);
   }
@@ -186,6 +191,11 @@ class StreamReader implements ISkelfReader {
     this.#offset += offsetToBits(size);
     return result;
   }
+  //async readUntilEnd(){
+  //  const result = await this.stream.readUntilEnd();
+  //  this.#offset += result.bitLength;
+  //  return result;
+  //}
   async skip(size : Offset){
     await this.stream.skip(size);
     this.#offset += offsetToBits(size);
