@@ -1,73 +1,5 @@
 import {LoggerConfiguredTwiceError,InvalidArgumentError} from "skelf/errors"
 import {groom} from "skelf/utils"
-export class Logger {
-  private static options : LoggerConfiguration = {};
-  private static isConfigured : boolean = false;
-  static configure(options : LoggerConfiguration){
-    if(Logger.isConfigured){
-      throw new LoggerConfiguredTwiceError(`
-        trying to configure skelf logger twice. skelf logger can be configured only once and it must be
-        configured before any logger objects are created.
-      `)
-    }
-    if(options.enable === false) return;
-    if(options.level) Logger.options.level = options.level;
-    else Logger.options.level = "warn";
-
-    const levelNumber = levelStringToNumber(Logger.options.level);
-
-    if(levelNumber >= 5){
-      if(options.verbose) Logger.options.verbose = options.verbose;
-      else Logger.options.verbose = (message : string) => console.log(message);
-    }
-    if(levelNumber >= 4){
-      if(options.log) Logger.options.log = options.log;
-      else Logger.options.log = (message : string) => console.log(message);
-    }
-
-    if(levelNumber >= 3){
-      if(options.warn) Logger.options.warn = options.warn
-      else if(options.log) Logger.options.warn = options.log
-      else Logger.options.warn = (message : string) => console.warn(message);
-    }
-
-    if(levelNumber >= 2){
-      if(options.error) Logger.options.error = options.error
-      else if(options.log) Logger.options.error = options.error
-      else this.options.error = (message : string) => console.error(message);
-    }
-
-    Logger.options.colors = options.colors ?? false;
-
-    Logger.isConfigured = true;
-  }
-
-  constructor(private scope : string){
-  }
-
-  verbose(message : string){
-    if(!Logger.options.verbose) return;
-    if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.verbose(logify(message,this.scope,"say",Logger.options.colors!))
-  }
-  log(message : string){
-    if(!Logger.options.log) return;
-    if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.log(logify(message,this.scope,"log",Logger.options.colors!));
-  }
-
-  warn(message : string){
-    if(!Logger.options.warn) return;
-    if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.warn(logify(message,this.scope,"warn",Logger.options.colors!));
-  }
-
-  error(message : string){
-    if(!Logger.options.error) return;
-    if(!Logger.isConfigured) Logger.configure({});
-    Logger.options.error(logify(message,this.scope,"error",Logger.options.colors!));
-  }
-}
 
 interface LoggerConfiguration {
   enable ?: boolean;
@@ -77,6 +9,74 @@ interface LoggerConfiguration {
   error ?: (message : string) => void;
   level ?: "verbose" | "warn" | "error" | "quiet";
   colors ?: boolean;
+}
+
+export class SkelfLogger {
+  private static options : LoggerConfiguration = {};
+  private static isConfigured : boolean = false;
+  static configure({enable,verbose,log,warn,error,level,colors} : LoggerConfiguration){
+    if(SkelfLogger.isConfigured){
+      throw new LoggerConfiguredTwiceError(`
+        trying to configure skelf logger twice. skelf logger can be configured only once and it must be
+        configured before any logger objects are created.
+      `)
+    }
+    if(enable === false) return;
+    if(level) SkelfLogger.options.level = level;
+    else SkelfLogger.options.level = "warn";
+
+    const levelNumber = levelStringToNumber(SkelfLogger.options.level);
+
+    if(levelNumber >= 5){
+      if(verbose) SkelfLogger.options.verbose = verbose;
+      else SkelfLogger.options.verbose = (message : string) => console.log(message);
+    }
+    if(levelNumber >= 4){
+      if(log) SkelfLogger.options.log = log;
+      else SkelfLogger.options.log = (message : string) => console.log(message);
+    }
+
+    if(levelNumber >= 3){
+      if(warn) SkelfLogger.options.warn = warn
+      else if(log) SkelfLogger.options.warn = log
+      else SkelfLogger.options.warn = (message : string) => console.warn(message);
+    }
+
+    if(levelNumber >= 2){
+      if(error) SkelfLogger.options.error = error
+      else if(log) SkelfLogger.options.error = error
+      else SkelfLogger.options.error = (message : string) => console.error(message);
+    }
+
+    SkelfLogger.options.colors = colors ?? false;
+
+    SkelfLogger.isConfigured = true;
+  }
+
+  constructor(private scope : string){}
+
+  verbose(message : string){
+    if(!SkelfLogger.options.verbose) return;
+    if(!SkelfLogger.isConfigured) SkelfLogger.configure({});
+    SkelfLogger.options.verbose(logify(message,this.scope,"say",SkelfLogger.options.colors!))
+  }
+  log(message : string){
+    if(!SkelfLogger.options.log) return;
+    if(!SkelfLogger.isConfigured) SkelfLogger.configure({});
+    SkelfLogger.options.log(logify(message,this.scope,"log",SkelfLogger.options.colors!));
+  }
+
+  warn(message : string){
+    if(!SkelfLogger.options.warn) return;
+    if(!SkelfLogger.isConfigured) SkelfLogger.configure({});
+    SkelfLogger.options.warn(logify(message,this.scope,"warn",SkelfLogger.options.colors!));
+  }
+
+  error(message : string){
+    if(!SkelfLogger.options.error) return;
+    if(!SkelfLogger.isConfigured) SkelfLogger.configure({});
+    SkelfLogger.options.error(logify(message,this.scope,"error",SkelfLogger.options.colors!));
+  }
 }
 
 function levelStringToNumber(levelString : string){
@@ -120,4 +120,4 @@ function getLevelColor(level : string){
   return ""
 }
 
-export default Logger
+export default SkelfLogger

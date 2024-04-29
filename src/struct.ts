@@ -1,6 +1,6 @@
 import {ISkelfDataType} from "skelf/types"
 import {createDataType} from "skelf/data_type"
-import {Logger} from "skelf/log"
+import Logger from "skelf/log"
 
 const logger = new Logger("struct");
 
