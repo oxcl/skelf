@@ -14,6 +14,14 @@ type StructSchema<T extends Object> = {
   [k in keyof T]: ISkelfDataType<T[k]> | DecisionMaker<T[k]>
 }
 
+//type StringDataTypeStrings  = "cstring";
+//type BooleanDataTypeStrings = "bool"    | "byteBool" | "bitBool";
+//type NumberDataTypeStrings  = "float32" | "float64"  | "float32BE" | "float64BE"
+//                            | "int8"    | "uint8"    | "byte"      | "ubyte"
+//                            | "int16"   | "uint16"   | "int16BE"   | "uint16BE"
+//                            | "short"   | "ushort"   | "shortBE"   | "ushortBE"
+//                            | "int32"   | "uint32"   | "int32BE"   | "uint32BE";
+
 export function createStruct<T extends Object>(name : string, schema : StructSchema<T>) : ISkelfDataType<T>;
 export function createStruct<T extends Object>(schema : StructSchema<T>) : ISkelfDataType<T>;
 export function createStruct<T extends Object>(
