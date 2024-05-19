@@ -4,12 +4,12 @@ import * as fs from  "node:fs/promises"
 export class NodeFileSpace extends SkelfSpace {
   override readonly name : string;
   private file! : fs.FileHandle;
-  constructor(private readonly fileName : string){
+  constructor(private readonly fileName : string,private readonly mode : string = "r+"){
     super();
     this.name = fileName;
   };
   override async _init(){
-    this.file = await fs.open(this.fileName,"r+");
+    this.file = await fs.open(this.fileName,this.mode);
   }
   override async _close(){
     await this.file.close();
