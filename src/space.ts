@@ -69,56 +69,56 @@ export abstract class SkelfSpace implements ISkelfSpace {
     this.#closed = true;
     logger.log(`space '${this.name}' is closed.`)
   }
-  async readUntilEnd(offset : Offset = 0){
-    const CHUNK_SIZE = 100;
-    if(this.locked)
-      throw new LockedSpaceError(`
-        trying to read from space '${this.name}' while it's locked. this could be caused by a not awaited
-        call to a read/write method, which might be still pending.
-      `)
-    if(!this.ready)
-      throw new SpaceIsNotReadyError(`
-        trying to read from space '${this.name}' while it's not initialized. spaces should be first initialized
-        with the init method before using them. this could be caused by a not awaited call to the init method.
-      `)
-    if(this.closed)
-      throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
-    this.#locked = true;
+  //async readUntilEnd(offset : Offset = 0){
+  //  const CHUNK_SIZE = 100;
+  //  if(this.locked)
+  //    throw new LockedSpaceError(`
+  //      trying to read from space '${this.name}' while it's locked. this could be caused by a not awaited
+  //      call to a read/write method, which might be still pending.
+  //    `)
+  //  if(!this.ready)
+  //    throw new SpaceIsNotReadyError(`
+  //      trying to read from space '${this.name}' while it's not initialized. spaces should be first initialized
+  //      with the init method before using them. this could be caused by a not awaited call to the init method.
+  //    `)
+  //  if(this.closed)
+  //    throw new SpaceIsClosedError(`trying to read from space '${this.name}' while it's already closed.`)
+  //  this.#locked = true;
 
-    const offsetInBits = offsetToBits(offset);
-    const offsetLeftoverBits = offsetInBits % 8;
+  //  const offsetInBits = offsetToBits(offset);
+  //  const offsetLeftoverBits = offsetInBits % 8;
 
-    const bufferArr : ArrayBuffer[] = [];
-    let offsetByte = Math.floor(offsetInBits / 8);
-    let chunk = await this._read(offsetByte,CHUNK_SIZE);
-    if(chunk === null){
-      throw new ReadOutsideSpaceBoundaryError(`
-        failed to read until the end of space '${this.name}' from offset ${offsetToString(offset)} because
-        it's at the end of the space or out of bounds.
-      `)
-    }
+  //  const bufferArr : ArrayBuffer[] = [];
+  //  let offsetByte = Math.floor(offsetInBits / 8);
+  //  let chunk = await this._read(offsetByte,CHUNK_SIZE);
+  //  if(chunk === null){
+  //    throw new ReadOutsideSpaceBoundaryError(`
+  //      failed to read until the end of space '${this.name}' from offset ${offsetToString(offset)} because
+  //      it's at the end of the space or out of bounds.
+  //    `)
+  //  }
 
-    do {
-      bufferArr.push(chunk);
-      chunk = await this._read(offsetByte,CHUNK_SIZE);
-    } while(chunk !== null);
+  //  do {
+  //    bufferArr.push(chunk);
+  //    chunk = await this._read(offsetByte,CHUNK_SIZE);
+  //  } while(chunk !== null);
 
-    const totalSize = bufferArr.reduce((acc,element)=>acc + element.byteLength,0);
-    const concatBuffer = new ArrayBuffer(totalSize);
-    const targetArray = new Uint8Array(concatBuffer);
-    let bytesFilled = 0;
-    for(const buffer of bufferArr){
-      const sourceArray = new Uint8Array(buffer);
-      for(let i=0;i<sourceArray.byteLength;i++){
-        targetArray[bytesFilled++] = sourceArray[i];
-      }
-    }
-    if(offsetLeftoverBits){
-      shiftUint8ByBits(targetArray,-(offsetLeftoverBits));
-      targetArray[bytesFilled-1] >>= offsetLeftoverBits;
-    }
-    return convertToSkelfBuffer(concatBuffer,totalSize*8 - offsetLeftoverBits);
-  }
+  //  const totalSize = bufferArr.reduce((acc,element)=>acc + element.byteLength,0);
+  //  const concatBuffer = new ArrayBuffer(totalSize);
+  //  const targetArray = new Uint8Array(concatBuffer);
+  //  let bytesFilled = 0;
+  //  for(const buffer of bufferArr){
+  //    const sourceArray = new Uint8Array(buffer);
+  //    for(let i=0;i<sourceArray.byteLength;i++){
+  //      targetArray[bytesFilled++] = sourceArray[i];
+  //    }
+  //  }
+  //  if(offsetLeftoverBits){
+  //    shiftUint8ByBits(targetArray,-(offsetLeftoverBits));
+  //    targetArray[bytesFilled-1] >>= offsetLeftoverBits;
+  //  }
+  //  return convertToSkelfBuffer(concatBuffer,totalSize*8 - offsetLeftoverBits);
+  //}
 
   async read(size : Offset, offset : Offset = 0){
     if(this.locked)
