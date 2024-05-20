@@ -176,6 +176,10 @@ export function isBufferLike(obj : any){
   return obj instanceof ArrayBuffer || obj instanceof Uint8Array;
 }
 
+export function isFileHandle(obj : any){
+  return (obj.constructor && obj.constructor.name === "FileHandle") || (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function" && typeof obj.close === "function");
+}
+
 
 export async function readUntil(
   source : ISkelfReader | ISkelfReadStream,

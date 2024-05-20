@@ -1,6 +1,11 @@
 // pollyfill for node.js Buffer type
 declare global {
   interface Buffer {}
+  interface FileHandle {
+    close() : Promise<void>;
+    read(buffer : Uint8Array,offset : number, length : number, position : number | null) : Promise<any>;
+    write(buffer : Uint8Array,offset : number, length : number, position : number | null) : Promise<any>;
+  }
 }
 
 export interface ISkelfSpace {
@@ -46,14 +51,16 @@ export interface ISkelfBuffer extends ArrayBuffer {
   readonly bitLength : number;
 }
 
-export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfReader |
-  ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer | // TODO: add blob support
-  ReadonlyArray<number> |
-  Iterator<number> | AsyncIterator<number> | { [Symbol.iterator] : () => IterableIterator<number>};
+export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfReader
+  | ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer // TODO: add blob support
+  | ReadonlyArray<number>
+  | Iterator<number> | AsyncIterator<number> | { [Symbol.iterator] : () => IterableIterator<number>}
+  | FileHandle;
 
-export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter |
-  ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer |
-  number[];
+export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter
+  | ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer
+  | number[]
+  | FileHandle;
 
 export interface ISkelfDataType<T> {
   name : string;

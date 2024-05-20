@@ -1,6 +1,6 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,SkelfInput,SkelfOutput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter,ISkelfBuffer} from "skelf/types"
-import {BufferSpace,ArraySpace,IteratorReadStream} from "skelf/core"
-import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer,offsetToString,isWriter,isReader} from "skelf/utils"
+import {BufferSpace,ArraySpace,IteratorReadStream,FileSpace} from "skelf/core"
+import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBits,convertToSkelfBuffer,offsetToString,isWriter,isReader,isFileHandle} from "skelf/utils"
 import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError,UnexpectedSizeError} from "skelf/errors"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
 // implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
@@ -41,6 +41,10 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       }
       else if(isBufferLike(input)){
         const space = await new BufferSpace(input as ArrayBuffer,options.name).init();
+        reader = new SpaceReader(space,offset);
+      }
+      else if(isFileHandle(input)){
+        const space = await new FileSpace(input as FileHandle, options.name).init();
         reader = new SpaceReader(space,offset);
       }
       else if(Array.isArray(input)){
