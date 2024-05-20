@@ -77,19 +77,21 @@ export function offsetToString(offset : Offset){
     `);
 }
 
-// copy a buffer into new buffer with optional expanded space at the end and offseted bytes in the beginning
-export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0,offset : number = 0){
-  if(expand === 0 && offset === 0)
-    return sourceBuffer.slice(0); // cloning the easy way
-
-  const targetBuffer = new ArrayBuffer(sourceBuffer.byteLength + expand);
-
-  // cloning the big portion
-  const bigPortionLength = Math.floor(sourceBuffer.byteLength / Float64Array.BYTES_PER_ELEMENT);
-  const sourceDataView = new DataView(sourceBuffer,0,bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
+export function copyBuffer(
+  source : ArrayBuffer,
+  target : ArrayBuffer,
+  offset : number,
+  length : number,
+  position : number
+){
+  if(offset + length > source.byteLength) throw "nah bruh";
+  if(position + length > target.byteLength) throw "still nah";
+  // copying the big portions
+  const bigPortionLength = Math.floor((length-offset) / Float64Array.BYTES_PER_ELEMENT);
+  const sourceDataView = new DataView(source,offset,bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
   const targetDataView = new DataView(
-    targetBuffer,
-    offset,
+    target,
+    position,
     bigPortionLength * Float64Array.BYTES_PER_ELEMENT
   );
 
@@ -100,12 +102,20 @@ export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0,offse
     );
 
   // copying over the remaining bytes in the small portion
-  const sourceArray = new Uint8Array(sourceBuffer, bigPortionLength * Float64Array.BYTES_PER_ELEMENT)
-  const targetArray = new Uint8Array(targetBuffer,offset + bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
+  if(offset+length === source.byteLength) return;
+  const sourceArray = new Uint8Array(source,offset + bigPortionLength*Float64Array.BYTES_PER_ELEMENT)
+  const targetArray = new Uint8Array(target,position + bigPortionLength*Float64Array.BYTES_PER_ELEMENT)
 
   for (let i = 0; i < sourceArray.length; i++)
     targetArray[i] = sourceArray[i];
+}
+// copy a buffer into new buffer with optional expanded space at the end and offseted bytes in the beginning
+export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0,offset : number = 0){
+  if(expand === 0 && offset === 0)
+    return sourceBuffer.slice(0); // cloning the easy way
 
+  const targetBuffer = new ArrayBuffer(sourceBuffer.byteLength + expand + offset);
+  copyBuffer(sourceBuffer,targetBuffer,0,sourceBuffer.byteLength,offset);
   return targetBuffer;
 }
 
