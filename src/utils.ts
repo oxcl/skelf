@@ -84,8 +84,6 @@ export function copyBuffer(
   length : number,
   position : number
 ){
-  if(offset + length > source.byteLength) throw "nah bruh";
-  if(position + length > target.byteLength) throw "still nah";
   // copying the big portions
   const bigPortionLength = Math.floor((length-offset) / Float64Array.BYTES_PER_ELEMENT);
   const sourceDataView = new DataView(source,offset,bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
@@ -102,7 +100,7 @@ export function copyBuffer(
     );
 
   // copying over the remaining bytes in the small portion
-  if(offset+length === source.byteLength) return;
+  if(length === bigPortionLength * Float64Array.BYTES_PER_ELEMENT) return;
   const sourceArray = new Uint8Array(source,offset + bigPortionLength*Float64Array.BYTES_PER_ELEMENT)
   const targetArray = new Uint8Array(target,position + bigPortionLength*Float64Array.BYTES_PER_ELEMENT)
 

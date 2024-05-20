@@ -1,5 +1,5 @@
 import {SkelfSpace} from "skelf/space"
-import {shiftUint8ByBits,cloneBuffer} from "skelf/utils"
+import {shiftUint8ByBits,copyBuffer} from "skelf/utils"
 import {ISkelfBuffer} from "skelf/types"
 type BufferLike = ArrayBuffer | Uint8Array | ISkelfBuffer | Buffer;
 
@@ -31,10 +31,6 @@ export class BufferSpace extends SkelfSpace {
     return this.buffer.slice(this.byteOffset + offset,this.byteOffset + offset + size);
   }
   async _write(chunk : ArrayBuffer, offset : number){
-    const destination = new Uint8Array(this.buffer);
-    const source = new Uint8Array(chunk);
-    for(let i=0;i<chunk.byteLength;i++){
-      destination[this.byteOffset + offset] = source[i];
-    }
+    copyBuffer(chunk,this.buffer,0,chunk.byteLength,offset);
   }
 }

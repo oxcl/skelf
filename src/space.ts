@@ -153,10 +153,15 @@ export abstract class SkelfSpace implements ISkelfSpace {
     //console.log({sizeInBits,bytesToRead,buffer})
 
 
-    if(!buffer || buffer.byteLength !== bytesToRead)
+    if(!buffer)
       throw new ReadOutsideSpaceBoundaryError(`
         failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${offsetWholeBytes} because
         it's out of bounds.
+      `)
+    if(buffer.byteLength !== bytesToRead)
+      throw new ReadOutsideSpaceBoundaryError(`
+        failed to read ${bytesToRead} bytes from space '${this.name}' from offset ${offsetWholeBytes}. only
+        ${buffer.byteLength} bytes was recieved from the underlying implementation.
       `)
 
     logger.verbose(`

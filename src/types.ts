@@ -67,7 +67,7 @@ export interface ISkelfDataType<T> {
   [Symbol.toStringTag] ?: string;
   size? : number;
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
-  readAndGetSize ?: (input : SkelfInput,offset ? : Offset) => Promise<{result: T, size : number}>;
+  readAndGetSize : (input : SkelfInput,offset ? : Offset) => Promise<{result: T, size : number}>;
   write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<number>;
   constraint : (value : T) => boolean | string;
 }
