@@ -1,5 +1,6 @@
-import {ISkelfDataType} from "skelf/types"
+import {ISkelfDataType,IOffsetBlock} from "skelf/types"
 import {createDataType} from "skelf/data_type"
+import {OffsetBlock} from "skelf/utils"
 import Logger from "skelf/log"
 
 const logger = new Logger("struct");
@@ -7,8 +8,8 @@ const logger = new Logger("struct");
 type Distribute<T> = T extends any ? ISkelfDataType<T> : never
 type Object = {[k: string]: any}
 
-type DecisionMaker<T> = ((struct : any,offset : number) => Distribute<T> | T)
-  & ((struct : any, offset : number) => Distribute<T> | null | undefined);
+type DecisionMaker<T> = ((struct : any,offset : IOffsetBlock) => Distribute<T> | T)
+  & ((struct : any, offset : IOffsetBlock) => Distribute<T> | null | undefined);
 
 type StructSchema<T extends Object> = {
   [k in keyof T]: ISkelfDataType<T[k]> | DecisionMaker<T[k]>
@@ -36,9 +37,9 @@ export function createStruct<T extends Object>(
     async read(reader){
       logger.log(`reading a '${this.name}' from reader '${reader.name}'...`)
       const object : any = {};
-      const offsetBeforeRead = reader.offset;
+      const offsetBeforeRead = OffsetBlock.clone(reader.offset);
       for(const [property,value] of Object.entries(schema)){
-        const offset = reader.offset - offsetBeforeRead;
+        const offset = OffsetBlock.clone(reader.offset).subtract(offsetBeforeRead);
         const dataType = (typeof value !== "function") ? value : value(object as Partial<T>,offset);
         if(!dataType) continue;
         logger.verbose(`
@@ -54,9 +55,9 @@ export function createStruct<T extends Object>(
     },
     async write(writer,object){
       logger.log(`writing a '${this.name}' to writer '${writer.name}'`)
-      const offsetBeforeWrite = writer.offset;
+      const offsetBeforeWrite = OffsetBlock.clone(writer.offset);
       for(const [property,value] of Object.entries(schema)){
-        const offset = writer.offset - offsetBeforeWrite;
+        const offset = OffsetBlock.clone(writer.offset).subtract(offsetBeforeWrite);
         const dataType = (typeof value !== "function") ? value : value(object as Partial<T>,offset);
         if(!dataType) continue;
         logger.verbose(`

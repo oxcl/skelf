@@ -1,9 +1,10 @@
 import {createDataType} from "skelf/data_type"
+import {OffsetBlock} from "skelf/utils"
 
 function createFloat(size : 32 | 64,littleEndian : boolean){
   return createDataType<number>({
     name: `float${size}${littleEndian ? "" : "BE"}`,
-    size,
+    size: new OffsetBlock(0,size),
     read: async function readFloat(reader){
       const buffer = await reader.read(`${size}b`);
       return new DataView(buffer)[`getFloat${size}`](0,littleEndian)

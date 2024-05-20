@@ -1,6 +1,5 @@
 import {ISkelfBuffer} from "skelf/types"
 import {SkelfWriteStream} from "skelf/write_stream"
-import {offsetToBits} from "skelf/utils"
 type BufferLike = ArrayBuffer | ISkelfBuffer | Uint8Array | Buffer;
 
 export class BufferWriteStream extends SkelfWriteStream {

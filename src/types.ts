@@ -42,13 +42,11 @@ export interface ISkelfWriteStream {
 }
 
 // since ArrayBuffers don't have the capability to work with bits, SkelfBuffer is a simple wrapper around
-// ArrayBuffer class which adds the size of the buffer in bits using the bitLength property. when the data is
+// ArrayBuffer class which adds the size of the buffer in bits using the size property. when the data is
 // less than 8 bits or has some leftover bits in the beginning this data is useful to know what parts are the
 // actual size of the data that is being used.
-// with functions that accept both SkelfBuffer nad ArrayBuffer, the bitLength of the ArrayBuffer is assumed to
-// be byteLength*8.
 export interface ISkelfBuffer extends ArrayBuffer {
-  readonly bitLength : number;
+  readonly size : IOffsetBlock;
 }
 
 export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfReader
@@ -65,25 +63,30 @@ export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter
 export interface ISkelfDataType<T> {
   name : string;
   [Symbol.toStringTag] ?: string;
-  size? : number;
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
-  readAndGetSize : (input : SkelfInput,offset ? : Offset) => Promise<{result: T, size : number}>;
-  write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<number>;
+  readAndGetSize : (input : SkelfInput,offset ? : Offset) => Promise<{value: T, size : IOffsetBlock}>;
+  write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<IOffsetBlock>;
   constraint : (value : T) => boolean | string;
+  size? : IOffsetBlock
 }
 
 export interface ISkelfReader {
   readonly name : string;
-  readonly offset : number;
+  readonly offset : IOffsetBlock
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
 }
 
 export interface ISkelfWriter {
   readonly name : string;
-  readonly offset : number;
+  readonly offset : IOffsetBlock
   readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
   readonly flush : () => Promise<void>;
 }
 
-export type Offset = number | string | [number,number] | { amount : number, unit : number};
+export type Offset = number | string | IOffsetBlock;
+
+export interface IOffsetBlock {
+  bits : number,
+  bytes : number
+}

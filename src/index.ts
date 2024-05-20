@@ -1,5 +1,4 @@
 export * from "skelf/space"
-export * from "skelf/units"
 export * from "skelf/types"
 export * from "skelf/read_stream"
 export * from "skelf/write_stream"

@@ -1,6 +1,6 @@
-import {Offset,ISkelfBuffer,ISkelfWriteStream} from "skelf/types"
+import {Offset,ISkelfBuffer,ISkelfWriteStream,IOffsetBlock} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedWriteLimitError} from "skelf/errors"
-import {offsetToBits,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom} from "skelf/utils"
+import {offsetToBlock,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom,OffsetBlock} from "skelf/utils"
 
 export abstract class SkelfWriteStream implements ISkelfWriteStream {
   abstract readonly name : string;
@@ -69,16 +69,15 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       throw new StreamIsClosedError(`trying to write to stream '${this.name}' while it's already closed.`)
     this.#locked = true;
 
-    const sizeInBits = (buffer as ISkelfBuffer).bitLength ?? buffer.byteLength*8;
-    const emptySpace = buffer.byteLength*8 - sizeInBits;
-    //console.log({sizeInBits,emptySpace})
+    const sizeBlock = (buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength);
+    const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
 
-    if(sizeInBits === 0){
+    if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
       this.#locked = false;
       return;
     }
 
-    if(this.cacheSize === 0 && sizeInBits % 8 === 0){
+    if(this.cacheSize === 0 &&  sizeBlock.bits === 0){
       const result = await this._write(buffer);
       if(result === false)
         throw new StreamReachedWriteLimitError(`
@@ -89,10 +88,10 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       return;
     }
 
-    if(this.cacheSize + sizeInBits < 8){
+    if(sizeBlock.bytes === 0 && this.cacheSize + sizeBlock.bits < 8){
       const byte = (new Uint8Array(buffer))[0];
-      this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeInBits),this.cacheSize)
-      this.cacheSize += sizeInBits;
+      this.cacheByte = mergeBytes(this.cacheByte,byte << (8 - this.cacheSize - sizeBlock.bits),this.cacheSize)
+      this.cacheSize += sizeBlock.bits;
       this.#locked = false;
       return;
     }
@@ -111,13 +110,12 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       finalBuffer = alignedBuffer.slice(1);
     }
     else{
-      const newCacheSize = (this.cacheSize + sizeInBits) % 8;
+      const newCacheSize = (this.cacheSize + sizeBlock.bits) % 8;
       const leftoverBits = shiftUint8ByBits(uint8,this.cacheSize);
       uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
       this.cacheSize = newCacheSize;
       this.cacheByte = leftoverBits;
       finalBuffer = alignedBuffer;
-      console.log({newCacheSize,newCache : leftoverBits.toString(16),finalBuffer})
     }
 
     const result = await this._write(finalBuffer);

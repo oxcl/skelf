@@ -1,6 +1,6 @@
 import {createDataType} from "skelf/data_type"
 import {InvalidIntegerSizeError} from "skelf/errors"
-import {convertToSkelfBuffer} from "skelf/utils"
+import {convertToSkelfBuffer,OffsetBlock} from "skelf/utils"
 
 function createIntDataType(size : number,signed : boolean,littleEndian : boolean,name : string){
   if(size <= 1 && signed )
@@ -68,18 +68,18 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
       encodeFunction = (view,value) => encode(view,signedToUnsigned(value,size))
     }
   }
-
+  const sizeBlock = new OffsetBlock(0,size);
   return createDataType<number>({
     name : name,
-    size,
+    size : sizeBlock,
     read: async function readInt(reader){
       const buffer = await reader.read(`${size}b`);
       return decodeFunction(new DataView(buffer));
     },
     write: async function writeInt(writer,value){
-      const buffer = new ArrayBuffer(Math.ceil(size / 8));
+      const buffer = new ArrayBuffer(sizeBlock.ceil())
       encodeFunction(new DataView(buffer),value);
-      await writer.write(convertToSkelfBuffer(buffer,size));
+      await writer.write(convertToSkelfBuffer(buffer,sizeBlock));
     }
   })
 }

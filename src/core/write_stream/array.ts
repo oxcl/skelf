@@ -1,6 +1,5 @@
 import {ISkelfBuffer} from "skelf/types"
 import {SkelfWriteStream} from "skelf/write_stream"
-import {offsetToBits} from "skelf/utils"
 
 export class ArrayWriteStream extends SkelfWriteStream {
   readonly name : string;

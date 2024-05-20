@@ -1,7 +1,7 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,ISkelfReader} from "skelf/types"
 import {ConstraintError} from "skelf/errors"
-import {readUntil} from "skelf/utils"
+import {OffsetBlock} from "skelf/utils"
 
 const decoder = new TextDecoder();
 function decode(buffer : ArrayBuffer){
@@ -48,7 +48,7 @@ export function fixedString(size : number,filler : number | string | undefined =
   const fillerNumber = !filler ? 0 : typeof filler === "number" ? filler : (filler!.charCodeAt(0));
   return createDataType<string>({
     name: `fixedString(${size})`,
-    size,
+    size: new OffsetBlock(size),
     read: async function readFixedString(reader){
       const buffer = await reader.read(size);
       const uint8 = new Uint8Array(buffer);
@@ -81,7 +81,7 @@ export function constString(constantString : string){
   const constantBuffer = encode(constantString).buffer;
   return createDataType<string>({
     name: `constString("${constantString.slice(0,15)}${constantString.length > 5 ? "...":""}")`,
-    size: constantBuffer.byteLength*8,
+    size: new OffsetBlock(constantBuffer.byteLength),
     read: async function readConstString(reader){
       const buffer = await reader.read(constantBuffer.byteLength);
       return decode(buffer);
@@ -96,4 +96,33 @@ export function constString(constantString : string){
       return true;
     }
   })
+}
+
+async function readUntil(
+  source : ISkelfReader,
+  delimiter : ArrayBuffer,
+  limit : number = Infinity
+){
+  const delimiterArray = new Uint8Array(delimiter);
+
+  const arr : number[] = [];
+  const cache : number[] = [];
+  let bytesMatched = 0;
+
+  while(bytesMatched < delimiterArray.byteLength && arr.length < limit){
+    const number = new DataView(await source.read(1)).getUint8(0);
+    if(number === delimiterArray[bytesMatched]){
+      bytesMatched++;
+      cache.push(number);
+    }
+    else {
+      if(cache.length > 0){
+        bytesMatched = 0;
+        arr.push(...cache);
+        cache.length = 0;
+      }
+      arr.push(number);
+    }
+  }
+  return new Uint8Array(arr).buffer
 }
