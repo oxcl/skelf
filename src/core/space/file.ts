@@ -39,15 +39,20 @@ export class FileSpace extends SkelfSpace {
     return this.readChunk.slice(offset,offset + size);
   }
   async _write(buffer : ArrayBuffer, position : number){
-    if(
+    if(buffer.byteLength >= this.chunkCapacity){
+      await this.file.write(new Uint8Array(buffer),0,buffer.byteLength,position);
+    }
+    else if(
       position !== this.writeChunkOffset + this.writeChunkSize
-      || this.writeChunkSize === this.chunkCapacity
+      || position + buffer.byteLength > this.chunkCapacity -  this.writeChunkSize
     ){
       await this.flushWriteChunk();
       this.writeChunkOffset = position;
     }
-    copyBuffer(buffer,this.writeChunk,0,buffer.byteLength,this.writeChunkSize);
-    this.writeChunkSize += buffer.byteLength;
+    else {
+      copyBuffer(buffer,this.writeChunk,0,buffer.byteLength,this.writeChunkSize);
+      this.writeChunkSize += buffer.byteLength;
+    }
   }
   override async _close(){
     await this.flushWriteChunk();
