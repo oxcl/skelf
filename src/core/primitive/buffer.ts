@@ -1,26 +1,26 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,Offset} from "skelf/types"
-import {offsetToString,offsetToBits,convertToSkelfBuffer} from "skelf/utils"
+import {offsetToString,offsetToBlock,OffsetBlock,convertToSkelfBuffer} from "skelf/utils"
 import {ISkelfBuffer} from "skelf/types"
 
 export function fixedBuffer(size : Offset){
-  const offsetInBits = offsetToBits(size);
+  const sizeBlock = offsetToBlock(size);
   return createDataType<ArrayBuffer | ISkelfBuffer>({
     name: `fixedBuffer(${offsetToString(size)})`,
-    size : offsetInBits,
+    size : sizeBlock,
     read: async function readFixedBuffer(reader){
-      return convertToSkelfBuffer(await reader.read(size),offsetToBits(size)) as ISkelfBuffer;
+      return convertToSkelfBuffer(await reader.read(size),sizeBlock) as ISkelfBuffer;
     },
     write: async function writeFixedBuffer(writer,value){
       await writer.write(value);
     },
     constraint: function constraintFixedBuffer(value){
-      const bufferSize = (value as ISkelfBuffer).bitLength ?? value.byteLength*8;
-      if(bufferSize === offsetInBits) return true;
+      const bufferSize = (value as ISkelfBuffer).size ?? new OffsetBlock(value.byteLength);
+      if(sizeBlock.isEqual(bufferSize)) return true;
       else {
         return `
-          fixedBuffer must be ${offsetToString(size)} in size but a buffer
-          with ${bufferSize} bits (${bufferSize/8} bytes) was recieved
+          fixedBuffer must be ${offsetToString(bufferSize)} in size but a buffer
+          with ${bufferSize} was recieved
         `;
       }
     }

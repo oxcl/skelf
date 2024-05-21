@@ -130,10 +130,19 @@ export function isFileHandle(obj : any){
 }
 
 export class OffsetBlock implements IOffsetBlock {
+  bits : number;
+  bytes : number;
   constructor(
-    public bytes : number = 0,
-    public bits : number =  0
-  ){}
+    bytes : number = 0,
+    bits : number =  0
+  ){
+    this.bytes = bytes + Math.floor(bits / 8)
+    this.bits = bits % 8;
+    if(this.bits<0){
+      this.bytes--;
+      this.bits = 8 + this.bits;
+    }
+  }
 
   incrementByBits(bitsIncrement : number){
     this.bits  = (this.bits + bitsIncrement) % 8;
@@ -143,15 +152,12 @@ export class OffsetBlock implements IOffsetBlock {
     this.bytes += byteIncrement;
   }
   add(size : IOffsetBlock){
-    let bytes = this.bytes + size.bytes;
-    bytes += Math.floor((this.bits + size.bits) / 8)
-    const bits = (this.bits + size.bits) % 8;
-    return new OffsetBlock(bytes,bits);
+    return new OffsetBlock(this.bytes+size.bytes,this.bits+size.bits);
   }
   subtract(size : IOffsetBlock){
     return this.add({
-      bits : -size.bits,
-      bytes : -size.bytes
+      bytes: -size.bytes,
+      bits: -size.bits
     })
   }
   ceil(){
@@ -159,6 +165,12 @@ export class OffsetBlock implements IOffsetBlock {
   }
   floor(){
     return this.bytes;
+  }
+  isEqual(block : IOffsetBlock){
+    return this.bytes === block.bytes && this.bits === block.bits;
+  }
+  multiply(number : number){
+    return new OffsetBlock(this.bytes*number,this.bits*number);
   }
   static enhance(block : IOffsetBlock){
     return new OffsetBlock(block.bytes,block.bits);

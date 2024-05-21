@@ -205,8 +205,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
     // is usually some empty space in the buffer which can be used to inject heads and tails. it should be
     // checked if there is enough space for the head and tail, and if not the buffer will be expanded by one
     // byte
-    const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
 
+    const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
     const clonedBuffer = cloneBuffer(buffer,headSize > emptySpace ? 1 : 0);
     const uint8 = new Uint8Array(clonedBuffer)
     shiftUint8ByBits(uint8,headSize - emptySpace);

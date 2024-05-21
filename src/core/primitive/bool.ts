@@ -1,11 +1,12 @@
 import {createDataType} from "skelf/data_type"
 import {ConstraintError} from "skelf/errors"
-import {convertToSkelfBuffer} from "skelf/utils"
+import {convertToSkelfBuffer,OffsetBlock} from "skelf/utils"
 
 function createBooleanType(size : number,name : string){
+  const sizeBlock = new OffsetBlock(0,size);
   return createDataType<boolean>({
     name,
-    size,
+    size : sizeBlock,
     read: async function readBoolean(reader){
       const number = new Uint8Array((await reader.read(`${size}b`)))[0];
       if(number === 0) return false;
@@ -14,7 +15,7 @@ function createBooleanType(size : number,name : string){
     },
     write: async function writeBoolean(writer,value){
       const buffer = new Uint8Array([value ? 1 : 0]).buffer;
-      await writer.write(convertToSkelfBuffer(buffer,size));
+      await writer.write(convertToSkelfBuffer(buffer,sizeBlock));
     }
   })
 }

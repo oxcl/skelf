@@ -1,5 +1,6 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType} from "skelf/types"
+import {OffsetBlock} from "skelf/utils"
 
 export function dynamicArray<T>(lengthDataType : ISkelfDataType<number>,itemDataType : ISkelfDataType<T>){
   return createDataType<T[]>({
@@ -24,7 +25,7 @@ export function dynamicArray<T>(lengthDataType : ISkelfDataType<number>,itemData
 export function fixedArray<T>(length : number, itemDataType : ISkelfDataType<T>){
   return createDataType<T[]>({
     name: `${itemDataType.name}[${length}]`,
-    size: (itemDataType.size) ? (itemDataType.size*length) : (undefined),
+    size: (itemDataType.size) ? (OffsetBlock.clone(itemDataType.size).multiply(length)) : (undefined),
     read: async function readFixedArray(reader){
       const array : T[] = new Array(length);
       for(let i=0;i<length;i++){
