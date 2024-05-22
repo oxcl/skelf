@@ -140,7 +140,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
   }
 }
 
-class SpaceReader implements ISkelfReader {
+export class SpaceReader implements ISkelfReader {
   readonly name : string;
   #offset : OffsetBlock;
   get offset(){ return this.#offset as IOffsetBlock;}
@@ -158,7 +158,7 @@ class SpaceReader implements ISkelfReader {
   }
 }
 
-class SpaceWriter implements ISkelfWriter {
+export class SpaceWriter implements ISkelfWriter {
   readonly name: string;
   #offset : OffsetBlock;
   get offset(){ return this.#offset as IOffsetBlock; };
@@ -178,7 +178,7 @@ class SpaceWriter implements ISkelfWriter {
   }
 }
 
-class StreamReader implements ISkelfReader {
+export class StreamReader implements ISkelfReader {
   readonly name : string;
   #offset = new OffsetBlock(0,0);
   get offset(){ return this.#offset as IOffsetBlock }
@@ -196,7 +196,7 @@ class StreamReader implements ISkelfReader {
   }
 }
 
-class StreamWriter implements ISkelfWriter {
+export class StreamWriter implements ISkelfWriter {
   readonly name : string;
   #offset = new OffsetBlock(0,0);
   get offset() { return this.#offset as IOffsetBlock};

@@ -1,11 +1,15 @@
 import {ISkelfBuffer,Offset,ISkelfReader,ISkelfReadStream,IOffsetBlock} from "skelf/types"
-import {InvalidOffsetError,SkelfError,InvalidArgumentError} from "skelf/errors"
+import {InvalidOffsetError,SkelfError,InvalidArgumentError,OutOfRangeError} from "skelf/errors"
 import {SkelfSpace} from "skelf/space"
 import {SkelfReadStream} from "skelf/read_stream"
 import {SkelfWriteStream} from "skelf/write_stream"
 
 // merge two bytes into one based by defining the bit size of the head
 export function mergeBytes(headByte : number,tailByte : number,headSize : number){
+  if(headSize > 8 || headSize < 0)
+    throw new InvalidArgumentError(`
+      invalid head size for mergeBytes function. headSize: ${headSize}
+    `)
   return (headByte >> (8-headSize) << (8-headSize)) | (((tailByte << headSize) & 0xFF) >> headSize)
 }
 
@@ -25,8 +29,31 @@ export function copyBuffer(
   length : number,
   position : number
 ){
+  if(length === 0) return;
+  if(offset > source.byteLength || offset < 0){
+    throw new InvalidArgumentError(`
+      offset value for copyBuffer is invalid. offset: ${offset}, source length: ${source.byteLength}
+    `)
+  }
+  if(length < 0){
+    throw new InvalidArgumentError(`
+      length value for copyBuffer is invalid. length: ${length}
+    `)
+  }
+  if(length + offset > source.byteLength){
+    throw new OutOfRangeError(`
+      length + offset is larget than the size of the source array. length : ${length}, offset: ${offset},
+      source array length: ${source.byteLength}
+    `)
+  }
+  if(position < 0 || position + length > target.byteLength){
+    throw new OutOfRangeError(`
+      position value for target buffer is invalid or out of range. position : ${position}, length : ${length},
+      target buffer length: ${target.byteLength}
+    `)
+  }
   // copying the big portions
-  const bigPortionLength = Math.floor((length-offset) / Float64Array.BYTES_PER_ELEMENT);
+  const bigPortionLength = Math.max(0,Math.floor((length-offset) / Float64Array.BYTES_PER_ELEMENT));
   const sourceDataView = new DataView(source,offset,bigPortionLength * Float64Array.BYTES_PER_ELEMENT);
   const targetDataView = new DataView(
     target,
@@ -37,7 +64,7 @@ export function copyBuffer(
   for (let i = 0; i < bigPortionLength; i++)
     targetDataView.setFloat64(
       i*Float64Array.BYTES_PER_ELEMENT,
-      sourceDataView.getFloat64(i)
+      sourceDataView.getFloat64(i*Float64Array.BYTES_PER_ELEMENT)
     );
 
   // copying over the remaining bytes in the small portion
@@ -48,13 +75,14 @@ export function copyBuffer(
   for (let i = 0; i < sourceArray.length; i++)
     targetArray[i] = sourceArray[i];
 }
+
 // copy a buffer into new buffer with optional expanded space at the end and offseted bytes in the beginning
-export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0,offset : number = 0){
-  if(expand === 0 && offset === 0)
+export function cloneBuffer(sourceBuffer : ArrayBuffer,expand : number = 0){
+  if(expand === 0)
     return sourceBuffer.slice(0); // cloning the easy way
 
-  const targetBuffer = new ArrayBuffer(sourceBuffer.byteLength + expand + offset);
-  copyBuffer(sourceBuffer,targetBuffer,0,sourceBuffer.byteLength,offset);
+  const targetBuffer = new ArrayBuffer(sourceBuffer.byteLength + expand);
+  copyBuffer(sourceBuffer,targetBuffer,0,sourceBuffer.byteLength,0);
   return targetBuffer;
 }
 
@@ -65,6 +93,10 @@ export function shiftUint8ByBits(uint8 : Uint8Array, shift : number){
       shifting a uint8Array by more than 8 bits is not possible. shift: ${shift}, array: ${uint8}
     `);
   if(shift === 0) return 0;
+  if(uint8.byteLength === 0)
+    throw new InvalidArgumentError(`
+      shifting a uint8Array with length of 0 is impossible.
+    `)
   let leftoverOfPrevByte = 0, leftoverOfThisByte = 0;
   if(shift > 0){
     for(let i = 0;i < uint8.byteLength; i++) {
@@ -139,14 +171,16 @@ export class OffsetBlock implements IOffsetBlock {
     this.bytes = bytes + Math.floor(bits / 8)
     this.bits = bits % 8;
     if(this.bits<0){
-      this.bytes--;
       this.bits = 8 + this.bits;
     }
   }
 
   incrementByBits(bitsIncrement : number){
+    this.bytes += Math.floor((this.bits+bitsIncrement) / 8);
     this.bits  = (this.bits + bitsIncrement) % 8;
-    this.bytes += Math.floor(bitsIncrement / 8);
+    if(this.bits<0){
+      this.bits = 8 + this.bits;
+    }
   }
   incrementByBytes(byteIncrement : number){
     this.bytes += byteIncrement;
@@ -208,10 +242,10 @@ function parseOffsetString(offsetString : string){
     return {bytes: amount, bits: 0};
   case "Kb": case "kb": case "Killobit": case "killobit": case "KilloBit": case "killoBit": case "Killobits":
   case "killobits": case "KilloBits": case "killoBits":
-    return {bytes: Math.floor(amount / 8 * 1000), bits: (amount / 8 * 1000) % 8};
+    return {bytes: Math.floor(amount / 8 * 1000), bits: 0};
   case "KB": case "kB": case "Killobyte": case "killobyte": case "KilloByte": case "killoByte":
   case "Killobytes": case "killobytes": case "KilloBytes": case "killoBytes":
-    return {bytes: amount * 1000, bits: 0};
+    return {bytes: amount * 1024, bits: 0};
   default:
     throw new InvalidOffsetError(`
       unable to parse unknown unit '${unitString}' in offset string

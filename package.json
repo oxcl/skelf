@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon --exec 'tsc && node .' -w src/",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "run": "tsc && node .",
     "playground": "nodemon --exec 'tsc && node dist/playground.js' -w src/",
     "playground:run": "tsc && node dist/playground.js"
@@ -43,16 +44,17 @@
     "./data_type": "./dist/data_type.js",
     "./struct": "./dist/struct.js",
     "./types": "./dist/types.js",
-    "./units": "./dist/units.js",
     "./errors": "./dist/errors.js",
     "./log": "./dist/log.js",
     "./utils": "./dist/utils.js",
     "./core": "./dist/core/index.js",
     "./common": "./dist/common/index.js",
-    "./node": "./dist/node/index.js"
+    "./tools": "./dist/tools.js"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.12.4",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.0",
     "typescript": "^5.4.3"
   }

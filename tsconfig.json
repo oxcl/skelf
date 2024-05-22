@@ -10,6 +10,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "strict": true,
     "useUnknownInCatchVariables": true,
+    "esModuleInterop": true,
     "module": "nodenext",
     "rootDir": "src",
     "outDir": "dist",

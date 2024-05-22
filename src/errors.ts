@@ -11,6 +11,9 @@ export abstract class SkelfError extends Error {
 export class InvalidArgumentError extends SkelfError {
   override name = "INVALID_ARGUMENT_ERROR";
 }
+export class OutOfRangeError extends SkelfError {
+  override name = "OUT_OF_RANGE_ERROR";
+}
 
 // when the value of the offset is not syntactically correct this error is thrown. a different error is thrown
 // when the offset is out of bound or logically invalid.
