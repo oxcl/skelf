@@ -1,5 +1,5 @@
 import {ISkelfSpace,ISkelfBuffer,Offset,IOffsetBlock} from "skelf/types"
-import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError} from "skelf/errors"
+import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError,SpaceClosedTwiceError} from "skelf/errors"
 import {mergeBytes,offsetToBlock,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer,offsetToString,OffsetBlock} from "skelf/utils"
 import Logger from "skelf/log"
 const logger = new Logger("space")
@@ -64,7 +64,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
         with the init method before using them. this could be caused by a not awaited call to the init method.
       `)
     if(this.closed)
-      throw new SpaceIsClosedError(`trying to close space '${this.name}' while it's already closed.`)
+      throw new SpaceClosedTwiceError(`trying to close space '${this.name}' while it's already closed.`)
     if(this._close) await this._close();
     this.#closed = true;
     logger.log(`space '${this.name}' is closed.`)
@@ -89,15 +89,18 @@ export abstract class SkelfSpace implements ISkelfSpace {
     `)
 
     const offsetBlock = offsetToBlock(offset).add(this.initialOffsetBlock); // how many bits should be offseted
-    //console.log({offsetSize})
+    //console.log({offsetBlock})
 
     const sizeBlock = offsetToBlock(size); // size of the buffer that should be read in bits
+    //console.log({sizeBlock})
 
     // calculate how many bytes should be read from stream to cover all the bits for the buffer even if it
     // contains some extra bits, they will be zeroed out at the end.
-    let bytesToRead = sizeBlock.ceil();
+    let bytesToRead = sizeBlock.bytes + Math.ceil((sizeBlock.bits + offsetBlock.bits) / 8);
+    //console.log({bytesToRead})
 
     const buffer = await this._read(bytesToRead,offsetBlock.bytes);
+    //console.log({buffer})
 
 
     if(!buffer)
@@ -115,18 +118,26 @@ export abstract class SkelfSpace implements ISkelfSpace {
       fetched ${bytesToRead} bytes at offset ${offsetBlock} from space using _read of '${this.name}'.
     `)
 
+    if(offsetBlock.bits === 0 && sizeBlock.bits === 0){
+      this.#locked = false;
+      logger.verbose(`succesfully read ${sizeBlock.bytes} bytes from space '${this.name}'.`)
+      return convertToSkelfBuffer(buffer,sizeBlock);
+    }
     const uint8 = new Uint8Array(buffer);
 
     // shift the array to the left to remove the leftover bits that were read but should be offseted.
     shiftUint8ByBits(uint8,-offsetBlock.bits);
+    //console.log({bufferAfterShift: buffer})
 
     // shift bits in the last byte to the right to remove the extra bits that are not part of the buffer.
-    const bitShift = (8 - sizeBlock.bits) % 8;
+    const bitShift = (8 - sizeBlock.bits) % 8
 
     // sometimes after shifting bytes to offset the leftover bits causes the last byte to become empty
     // this calculation controls if the last byte of the buffer should be trimmed or not
-    const shouldSlice = offsetBlock.bits && offsetBlock.bits >= (offsetBlock.bits + sizeBlock.bits) % 8;
-    //console.log({shouldSlice,bitShift})
+    const shouldSlice = (offsetBlock.bits + sizeBlock.bits) % 8 !== 0
+      && offsetBlock.bits >= (offsetBlock.bits + sizeBlock.bits) % 8;
+    //console.log({bitShift,shouldSlice})
+
     if(shouldSlice){
       uint8[uint8.byteLength-2] >>= bitShift;
     }
@@ -175,13 +186,14 @@ export abstract class SkelfSpace implements ISkelfSpace {
       to space '${this.name}'
     `)
 
-    const offsetBlock = offsetToBlock(offset).add(this.initialOffsetBlock); // how many bits shoulud be offseted
+    // how many bits shoulud be offseted
+    const offsetBlock = offsetToBlock(offset).add(this.initialOffsetBlock);
 
     // calculate how many offset bits are left over after whole bytes are offseted. these bits should be merged
     // in the first byte of the buffer we want to write. so it's kind of like the head of the buffer
     const headSize = offsetBlock.bits;
 
-    // calculate how many bits from the space should be merged with the last byte of the buffer so that original
+    // calculate how many bits from space should be merged with the last byte of the buffer so that original
     // bits in the space remain the same after merging bits in the buffer.
     const tailSize = (8 - ((headSize + sizeBlock.bits) % 8)) % 8;
 
@@ -189,7 +201,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     if(headSize === 0 && tailSize === 0){
       const result = await this._write(buffer,offsetBlock.bytes);
       if(result === false)
-        throw new ReadOutsideSpaceBoundaryError(`
+        throw new WriteOutsideSpaceBoundaryError(`
           failed to write ${buffer.byteLength} bytes to space '${this.name}' from offset ${offsetBlock}
           because it's out of bounds.
         `)
@@ -205,11 +217,16 @@ export abstract class SkelfSpace implements ISkelfSpace {
     // is usually some empty space in the buffer which can be used to inject heads and tails. it should be
     // checked if there is enough space for the head and tail, and if not the buffer will be expanded by one
     // byte
-
     const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
-    const clonedBuffer = cloneBuffer(buffer,headSize > emptySpace ? 1 : 0);
+    const shouldExpand = headSize > emptySpace ? true : false;
+    const clonedBuffer = cloneBuffer(buffer,shouldExpand ? 1 : 0)
+    console.log({buffer})
     const uint8 = new Uint8Array(clonedBuffer)
-    shiftUint8ByBits(uint8,headSize - emptySpace);
+    uint8[uint8.byteLength-(shouldExpand ? 2 : 1)] <<= (8 - sizeBlock.bits) % 8
+    console.log({thisIsAfterShift1: clonedBuffer})
+    shiftUint8ByBits(uint8,headSize);
+    console.log({headSize})
+    console.log({thisIsAfterShift2: clonedBuffer})
 
     // inject head
     if(headSize > 0){

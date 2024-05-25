@@ -39,6 +39,9 @@ export class ReadOutsideSpaceBoundaryError extends SkelfError {
 export class SpaceIsClosedError extends SkelfError {
   override name = "SPACE_IS_CLOSED_ERROR"
 }
+export class SpaceClosedTwiceError extends SkelfError {
+  override name = "SPACE_CLOSED_TWICE";
+}
 
 export class StreamIsNotReadyError extends SkelfError {
   override name = "STREAM_IS_NOT_READY_ERROR";
