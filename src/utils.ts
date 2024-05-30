@@ -203,6 +203,9 @@ export class OffsetBlock implements IOffsetBlock {
   isEqual(block : IOffsetBlock){
     return this.bytes === block.bytes && this.bits === block.bits;
   }
+  isZero(){
+    return this.bytes === 0 && this.bits === 0;
+  }
   multiply(number : number){
     return new OffsetBlock(this.bytes*number,this.bits*number);
   }

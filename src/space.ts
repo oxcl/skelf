@@ -1,5 +1,5 @@
 import {ISkelfSpace,ISkelfBuffer,Offset,IOffsetBlock} from "skelf/types"
-import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError,SpaceClosedTwiceError} from "skelf/errors"
+import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError,SpaceClosedTwiceError,InvalidArgumentError} from "skelf/errors"
 import {mergeBytes,offsetToBlock,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer,offsetToString,OffsetBlock} from "skelf/utils"
 import Logger from "skelf/log"
 const logger = new Logger("space")
@@ -8,7 +8,6 @@ const logger = new Logger("space")
 // able to easily work with bits. these operations are mostly abstracted away in the Space class so that new
 // spaces could be created easily without needing to worry about internal implementation details and dealing
 // with bits
-
 
 // an implementation of the ISpace interface to abstract some common operations away.
 export abstract class SkelfSpace implements ISkelfSpace {
@@ -40,8 +39,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
   // abstracted away for the creator of the space
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
-  protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer | null>;
-  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<boolean | void>;
+  protected abstract _read(size : number, offset : number) : Promise<ArrayBuffer | null | false>;
+  protected abstract _write(buffer : ArrayBuffer, offset : number) : Promise<boolean | void | undefined | null>;
 
   async init(){
     if(this.ready)
@@ -51,7 +50,6 @@ export abstract class SkelfSpace implements ISkelfSpace {
     logger.log(`space '${this.name}' is initialized.`);
     return this;
   }
-
   async close(){
     if(this.locked)
       throw new LockedSpaceError(`
@@ -93,6 +91,13 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     const sizeBlock = offsetToBlock(size); // size of the buffer that should be read in bits
     //console.log({sizeBlock})
+
+    if(sizeBlock.isZero()) return convertToSkelfBuffer(new ArrayBuffer(0),new OffsetBlock(0,0))
+
+    if(sizeBlock.bytes < 0 || sizeBlock.bits < 0 || offsetBlock.bytes < 0 || offsetBlock.bits < 0)
+      throw new InvalidArgumentError(`
+        received invalid argument for read method. size: ${sizeBlock}, offset: ${offsetBlock}
+      `)
 
     // calculate how many bytes should be read from stream to cover all the bits for the buffer even if it
     // contains some extra bits, they will be zeroed out at the end.
@@ -186,8 +191,13 @@ export abstract class SkelfSpace implements ISkelfSpace {
       to space '${this.name}'
     `)
 
-    // how many bits shoulud be offseted
+    // how many bits should be offseted
     const offsetBlock = offsetToBlock(offset).add(this.initialOffsetBlock);
+
+    if(offsetBlock.bytes < 0)
+      throw new InvalidArgumentError(`
+        recieved invalid offset value for write method. offset: ${offsetBlock}
+      `)
 
     // calculate how many offset bits are left over after whole bytes are offseted. these bits should be merged
     // in the first byte of the buffer we want to write. so it's kind of like the head of the buffer
@@ -200,7 +210,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     // if the operation is in whole bytes without any leftovers, just write the buffer to space and return
     if(headSize === 0 && tailSize === 0){
       const result = await this._write(buffer,offsetBlock.bytes);
-      if(result === false)
+      if(result === false || result === null)
         throw new WriteOutsideSpaceBoundaryError(`
           failed to write ${buffer.byteLength} bytes to space '${this.name}' from offset ${offsetBlock}
           because it's out of bounds.
@@ -220,13 +230,14 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
     const shouldExpand = headSize > emptySpace ? true : false;
     const clonedBuffer = cloneBuffer(buffer,shouldExpand ? 1 : 0)
-    console.log({buffer})
+    //console.log({clonedBuffer})
+
     const uint8 = new Uint8Array(clonedBuffer)
     uint8[uint8.byteLength-(shouldExpand ? 2 : 1)] <<= (8 - sizeBlock.bits) % 8
-    console.log({thisIsAfterShift1: clonedBuffer})
+    //console.log({afterEndianShift: clonedBuffer,sizeBlock})
+
     shiftUint8ByBits(uint8,headSize);
-    console.log({headSize})
-    console.log({thisIsAfterShift2: clonedBuffer})
+    //console.log({afterShift: clonedBuffer,headSize})
 
     // inject head
     if(headSize > 0){
@@ -241,6 +252,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
         `)
       const firstByte = new Uint8Array(leftOverBuffer)[0];
       uint8[0] = mergeBytes(firstByte,uint8[0],headSize);
+      //console.log({afterHeadInjection: clonedBuffer,firstByte})
     }
 
     // inject tail
@@ -250,18 +262,19 @@ export abstract class SkelfSpace implements ISkelfSpace {
         be merged. tail size: ${tailSize}.
       `)
       const leftOverBuffer = await this._read(1,offsetBlock.bytes + uint8.byteLength-1);
-      if(!leftOverBuffer  || leftOverBuffer.byteLength !== 1)
+      if(!leftOverBuffer || leftOverBuffer.byteLength !== 1)
         throw new ReadOutsideSpaceBoundaryError(`
           failed to read 1 byte from space '${this.name}' from offset ${offsetBlock.bytes+uint8.byteLength-1}
           because it's out of bounds.
         `)
       const lastByte = new Uint8Array(leftOverBuffer)[0];
       uint8[uint8.byteLength-1] = mergeBytes(uint8[uint8.byteLength-1],lastByte,8 - tailSize);
+      //console.log({afterTailInjection: clonedBuffer,lastByte})
     }
 
     const result = await this._write(clonedBuffer,offsetBlock.bytes);
 
-    if(result === false)
+    if(result === false || result === null)
       throw new ReadOutsideSpaceBoundaryError(`
         failed to write ${clonedBuffer.byteLength} bytes from space '${this.name}' from offset
         ${offsetBlock.bytes} because it's out of bounds.

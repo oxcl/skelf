@@ -7,9 +7,12 @@ import {
   SpaceInitializedTwiceError,
   LockedSpaceError,
   SpaceIsClosedError,
-  SpaceClosedTwiceError
+  SpaceClosedTwiceError,
+  ReadOutsideSpaceBoundaryError,
+  WriteOutsideSpaceBoundaryError
 } from "skelf/errors"
 import {convertToSkelfBuffer} from "skelf/utils"
+
 
 
 class DummySpace extends SkelfSpace {
@@ -41,10 +44,13 @@ class DummyArraySpace extends SkelfSpace {
   name ="dummyArraySpace";
   array = new Array(255).fill(null).map((_,index)=>index);
   async _read(size : number, offset : number){
+    if(offset > 255) return null;
     return new Uint8Array(this.array.slice(offset,offset+size)).buffer;
   }
   async _write(buffer : ArrayBuffer, offset : number){
+    if(offset + buffer.byteLength > 255) return null;
     [...new Uint8Array(buffer)].forEach((num,index)=> this.array[offset+index] = num);
+    return true;
   }
 }
 
@@ -199,6 +205,24 @@ describe("reading",()=>{
       expect(result.size).toEqual({bytes : resultBytes, bits: resultBits})
     })
   })
+  describe("read method handles out of boundary responses correctly",()=>{
+    let space = new DummyArraySpace();
+    beforeEach(async ()=> {
+      space = new DummyArraySpace();
+      await space.init()
+    });
+    const cases = [
+      [1,255],
+      [2,254],
+      [55,250],
+      [0,256],
+      [20,500],
+      [100,240]
+    ];
+    test.each(cases)("#%# for read(#d,#d) should throw out of boundary",(size,offset)=>{
+      expect(async ()=> space.read(size,offset)).rejects.toThrow(ReadOutsideSpaceBoundaryError)
+    })
+  })
 })
 
 describe("writing",()=>{
@@ -221,10 +245,12 @@ describe("writing",()=>{
   })
   describe("write SkelfBuffers correctly",()=>{
     const cases = [
-      [[0,1,2,3],4,0,0,         [0,1,2,3],0],
-      [[0x0f],0,4,"4b",         [0x0f,0x01],0],
-      [[0xaa,0xa0],2,0,"5b",    [0x05,0x55,0x02],0],
-      [[0xfa,0x0b],1,4,"13b",   [0x07,0xd5,0x83],1]
+      [[0,1,2,3],4,0,0,                           [0,1,2,3],0],
+      [[0x0f],0,4,"4b",                           [0x0f,0x01],0],
+      [[0xaa,0xa0],2,0,"5b",                      [0x05,0x55,0x02],0],
+      [[0xfa,0x0b],1,4,"13b",                     [0x07,0xd5,0x83],1],
+      [[0xfa,0x0b],1,4,"13b",                     [0x07,0xd5,0x83],1],
+      [[0xf0,0x52,0x0c],2,3,{bytes: 80, bits: 3}, [0x5e,0x0a,0x52,0x53],80]
     ] as const;
     test.each(cases)(
       "#%# write %p with %p bytes and %p bits to offset %p",
@@ -233,6 +259,26 @@ describe("writing",()=>{
         expect(space.array.slice(checkOffset,checkOffset+expectedResult.length)).toEqual(expectedResult);
       }
     )
+  })
+  describe("write method handles out of boundary responses correctly",()=>{
+    let space = new DummyArraySpace();
+    beforeEach(async ()=> {
+      space = new DummyArraySpace();
+      await space.init()
+    });
+    const cases = [
+      [10,255],
+      [2,254],
+      [55,250],
+      [0,256],
+      [20,500],
+      [100,240]
+    ];
+    test.each(cases)("#%# for write(#d,#d) should throw out of boundary",(size,offset)=>{
+      expect(
+        async ()=> space.write(new Uint8Array(size).buffer,offset)
+      ).rejects.toThrow(WriteOutsideSpaceBoundaryError)
+    })
   })
 })
 
