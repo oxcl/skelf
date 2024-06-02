@@ -79,6 +79,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       writing ${sizeBlock} to write stream '${this.name}'...
     `)
     const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
+    console.log({buffer,sizeBlock,emptySpace})
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
       this.#locked = false;
@@ -108,8 +109,8 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       return;
     }
 
-    const alignedBuffer = cloneBuffer(buffer);
-    const uint8 = new Uint8Array(alignedBuffer);
+    const clonedBuffer = cloneBuffer(buffer);
+    const uint8 = new Uint8Array(clonedBuffer);
     uint8[uint8.byteLength-1] <<= emptySpace;
 
     // caching leftover bits that will not fit in a whole byte
@@ -117,9 +118,9 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     if(emptySpace > this.cacheSize){
       shiftUint8ByBits(uint8,this.cacheSize);
       uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
-      this.cacheSize = (8 - emptySpace) % 8;
-      this.cacheSize = uint8[uint8.byteLength-1];
-      finalBuffer = alignedBuffer.slice(1);
+      this.cacheSize = (this.cacheSize + sizeBlock.bits) % 8;
+      this.cacheByte = uint8[uint8.byteLength-1];
+      finalBuffer = clonedBuffer.slice(0,-1);
     }
     else{
       const newCacheSize = (this.cacheSize + sizeBlock.bits) % 8;
@@ -127,8 +128,9 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       uint8[0] = mergeBytes(this.cacheByte,uint8[0],this.cacheSize);
       this.cacheSize = newCacheSize;
       this.cacheByte = leftoverBits;
-      finalBuffer = alignedBuffer;
+      finalBuffer = clonedBuffer;
     }
+    console.log({finalBuffer})
 
     const result = await this._write(finalBuffer);
     if(result === false)

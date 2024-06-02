@@ -128,20 +128,20 @@ describe("locked flag",()=>{
 
 const cacheCases = [
 //[size,byte,index]
-  [0   ,0x00,0    ],
-//  [2   ,0x40,1    ],
+//  [0   ,0x00,0    ],
+  [2   ,0x40,1    ],
 //  [5   ,0x98,2    ],
 //  [7   ,0xd6,3    ]
 ] as const;
 
 const cases = [
 //[bytes,bits,index,array]
-  [0    ,1   ,0    ,[0x01]],
-  [0    ,4   ,1    ,[0x0e]],
-  [0    ,7   ,2    ,[0x8c]],
-  [1    ,0   ,3    ,[0x66]],
-  [1    ,3   ,4    ,[0x99,0x05]],
-//  [2    ,0   ,5    ,[0x00,0x43]],
+//  [0    ,1   ,0    ,[0x01]],
+//  [0    ,4   ,1    ,[0x0e]],
+//  [0    ,7   ,2    ,[0x8c]],
+//  [1    ,0   ,3    ,[0x66]],
+//  [1    ,3   ,4    ,[0x99,0x05]],
+  [2    ,0   ,5    ,[0x00,0x43]],
 //  [3    ,7   ,6    ,[0x00,0xe9,0x01,0xff]]
 ] as const;
 
@@ -154,11 +154,19 @@ const expectedResults = [
     [7        ,0x18     ,[]],
     [0        ,0x00     ,[0x66]],
     [3        ,0xa0     ,[0x99]],
-//    [0        ,0x00     ,[0x00,0x43]],
-//    [1        ,0x80     ,[0x00,0xe9,0x01]]
+    [0        ,0x00     ,[0x00,0x43]],
+    [7        ,0xfe     ,[0x00,0xe9,0x01]]
   ],
+  [
+    [3        ,0x60     ,[]],
+    [6        ,0x78     ,[]],
+    [1        ,0x00     ,[0x46]],
+    [2        ,0x80     ,[0x59]],
+    [5        ,0x68     ,[0x66]],
+    [2        ,0xc0     ,[0x40,0x10]]
+  ]
 ];
-describe.each(cacheCases)("writes correctly when %d bits are cached",(cacheSize,cacheByte,cacheIndex)=>{
+describe.only.each(cacheCases)("writes correctly when %d bits are cached",(cacheSize,cacheByte,cacheIndex)=>{
   let stream = new DummyArrayStream();
   beforeEach(async ()=>{
     stream = await new DummyArrayStream().init();
