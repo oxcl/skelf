@@ -184,13 +184,19 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     }
 
     const bytesToRead = sizeBlock.subtract({bytes: 0, bits: this.cacheSize}).ceil();
+    console.log({sizeBlock,bytesToRead})
 
-    const buffer = await this._read(bytesToRead);
-    if(!buffer || buffer.byteLength < bytesToRead){
+    const receivedBuffer = await this._read(bytesToRead);
+
+    if(!receivedBuffer || receivedBuffer.byteLength < bytesToRead){
       throw new StreamReachedReadLimitError(`
         stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
     }
+    const shouldExpand = sizeBlock.ceil() !== bytesToRead;
+    const buffer = cloneBuffer(receivedBuffer,shouldExpand ? 1 : 0);
+    //console.log({buffer})
+
     logger.verbose(`
       read ${bytesToRead} bytes from underlying implementation of read stream '${this.name}'.
     `)
@@ -201,12 +207,14 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     const uint8 = new Uint8Array(buffer);
     const newCacheSize = new OffsetBlock(bytesToRead,this.cacheSize).subtract(sizeBlock).bits;
-    const newCacheByte = uint8[uint8.byteLength-1] & (0xFF >> (8-newCacheSize));
+    const newCacheByte = uint8[uint8.byteLength-(shouldExpand?2:1)] & (0xFF >> (8-newCacheSize));
 
     shiftUint8ByBits(uint8,this.cacheSize);
+    console.log({bufferAfterShiftingForCache: buffer})
 
     uint8[0] = mergeBytes((this.cacheByte<<(8-this.cacheSize)) & 0xFF,uint8[0],this.cacheSize)
-    uint8[uint8.byteLength-1] >>= newCacheSize;
+    console.log({bufferAfterInjectingCacheBits : buffer})
+    uint8[uint8.byteLength-1] >>= (8-sizeBlock.bits) % 8;
 
     this.cacheSize = newCacheSize;
     this.cacheByte = newCacheByte;

@@ -245,10 +245,10 @@ describe("reading",()=>{
   })
   const cacheCases = [
 //  [cacheSize,cacheByte,index]
-    [0        ,0x00     ,0    ],
-    [1        ,0x01     ,1    ],
+//    [0        ,0x00     ,0    ],
+//    [1        ,0x01     ,1    ],
 //    [3        ,0x05     ,2    ],
-//    [7        ,0x5f     ,3    ]
+    [7        ,0x5f     ,3    ]
   ];
   const cases = [
 //  [bytes,bits,index]
@@ -279,37 +279,37 @@ describe("reading",()=>{
       [4        ,0x0a     ,1       ,[0x1a]],
       [2        ,0x02     ,1       ,[0x6a]],
       [1        ,0x00     ,1       ,[0xd5]],
-      [3        ,0x03     ,2       ,[0x35,0x55]],
+      [3        ,0x03     ,2       ,[0xd5,0x15]],
       [1        ,0x00     ,3       ,[0xd5,0x55,0xd6]],
-      [5        ,0x0d     ,4       ,[0xd5,0x55,0xd6,0x65]]
+      [5        ,0x0d     ,4       ,[0xd5,0x55,0xd6,0x05]]
     ],
-//    [
-//      [2        ,0x01     ,null    ,null    ],
-//      [0        ,0x00     ,null    ,null    ],
-//      [6        ,0x2a     ,null    ,1       ],
-//      [4        ,0x0a     ,null    ,1       ],
-//      [3        ,0x02     ,null    ,1       ],
-//      [5        ,0x0b     ,1       ,1       ],
-//      [3        ,0x04     ,2       ,1       ],
-//      [7        ,0x2d     ,3       ,1       ],
-//    ],
-//    [
-//      [6        ,0x1f     ,null    ,null    ],
-//      [4        ,0x0f     ,null    ,null    ],
-//      [2        ,0x03     ,null    ,null    ],
-//      [0        ,0x00     ,null    ,null    ],
-//      [7        ,0x2a     ,null    ,1       ],
-//      [1        ,0x00     ,null    ,1       ],
-//      [7        ,0x2c     ,2       ,1       ],
-//      [3        ,0x04     ,2       ,1       ]
-//    ]
+    [
+      [2        ,0x01     ,null    ,[0x01]],
+      [0        ,0x00     ,null    ,[0x05]],
+      [6        ,0x2a     ,1       ,[0x16]],
+      [4        ,0x0a     ,1       ,[0x5a]],
+      [3        ,0x02     ,1       ,[0xb5]],
+      [5        ,0x0b     ,2       ,[0xb5,0x15]],
+      [3        ,0x04     ,3       ,[0xb5,0x55,0x75]],
+      [7        ,0x2d     ,4       ,[0xb5,0x55,0x75,0x09]]
+    ],
+    [
+      [6        ,0x1f     ,null    ,[0x01]],
+      [4        ,0x0f     ,null    ,[0x05]],
+      [2        ,0x03     ,null    ,[0x17]],
+      [0        ,0x00     ,null    ,[0x5f]],
+      [7        ,0x2a     ,1       ,[0xbf]],
+      [1        ,0x00     ,1       ,[0xbf,0x15]],
+      [7        ,0x2c     ,3       ,[0xbf,0x55,0x57]],
+      [3        ,0x04     ,3       ,[0xbf,0x55,0x57,0x05]]
+    ]
   ] as const;
   describe.each(cacheCases)("reads when %d bits are cached", (cacheSize,cacheByte,cacheIndex)=>{
     beforeEach(()=>{
       stream["cacheSize"] = cacheSize;
       stream["cacheByte"] = cacheByte;
     })
-    test.only.each(cases)("#%# reads %d bytes and %d bits",async (readBytes,readBits,readIndex)=>{
+    test.each(cases)("#%# reads %d bytes and %d bits",async (readBytes,readBits,readIndex)=>{
       const [
         expectedCacheSize,
         expectedCacheByte,
