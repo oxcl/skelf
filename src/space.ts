@@ -120,12 +120,13 @@ export abstract class SkelfSpace implements ISkelfSpace {
       `)
 
     logger.verbose(`
-      fetched ${bytesToRead} bytes at offset ${offsetBlock} from space using _read of '${this.name}'.
+      read ${bytesToRead} bytes at offset ${offsetBlock} from underlying implementation
+      of space '${this.name}'.
     `)
 
     if(offsetBlock.bits === 0 && sizeBlock.bits === 0){
       this.#locked = false;
-      logger.verbose(`succesfully read ${sizeBlock.bytes} bytes from space '${this.name}'.`)
+      logger.verbose(`successfully read ${sizeBlock.bytes} bytes from space '${this.name}'.`)
       return convertToSkelfBuffer(buffer,sizeBlock);
     }
     const uint8 = new Uint8Array(buffer);
@@ -154,7 +155,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     this.#locked = false;
 
-    logger.verbose(`succesful read from space '${this.name}'.`)
+    logger.verbose(`successful read from space '${this.name}'.`)
 
     // if the size doesn't have leftover bits but the offset does. that means after shifting bits to correct
     // positions, there should be a redundant empty byte at the beginning of the buffer that was read.
@@ -196,7 +197,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     if(offsetBlock.bytes < 0)
       throw new InvalidArgumentError(`
-        recieved invalid offset value for write method. offset: ${offsetBlock}
+        received invalid offset value for write method. offset: ${offsetBlock}
       `)
 
     // calculate how many offset bits are left over after whole bytes are offseted. these bits should be merged
@@ -217,8 +218,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
         `)
       this.#locked = false;
       logger.verbose(`
-        wrote ${buffer.byteLength} bytes at offset ${offsetBlock}B to space '${this.name}' without any
-        bit manipulations.
+        wrote ${buffer.byteLength} bytes at offset ${offsetBlock}B to space '${this.name}' without
+        any bit manipulations.
       `);
       return;
     }
@@ -282,7 +283,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     logger.verbose(`
       pushed a buffer with ${clonedBuffer.byteLength} bytes at offset ${offsetBlock.bytes}
-      to space '${this.name}' _write function
+      to underlying implementation of space '${this.name}'.
     `)
     this.#locked = false;
   }

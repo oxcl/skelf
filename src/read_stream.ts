@@ -1,6 +1,8 @@
 import {Offset,ISkelfReadStream,IOffsetBlock} from "skelf/types"
-import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedReadLimitError} from "skelf/errors"
+import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedReadLimitError,StreamClosedTwiceError} from "skelf/errors"
 import {offsetToBlock,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,OffsetBlock} from "skelf/utils"
+import Logger from "skelf/log"
+const logger = new Logger("read_stream")
 
 export abstract class SkelfReadStream implements ISkelfReadStream {
   abstract readonly name : string;
@@ -30,7 +32,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   protected async _init()  : Promise<void>{};
   protected async _close() : Promise<void>{};
   protected abstract _read(size : number) : Promise<ArrayBuffer | null>;
-  protected async _skip(size : number) : Promise<boolean | undefined> {
+  protected async _skip(size : number) : Promise<boolean | undefined | void> {
     const result = await this._read(size);
     return (result !== null) && (result.byteLength === size);
   };
@@ -42,6 +44,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     this.#ready = true;
     if(this.initialOffsetBlock.bits > 0 || this.initialOffsetBlock.bytes > 0)
       await this.skip(this.initialOffsetBlock);
+    logger.log(`read stream '${this.name}' is initialized`);
     return this;
   }
 
@@ -57,15 +60,16 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
         with the init method before using them. this could be caused by a not awaited call to the init method.
       `)
     if(this.closed)
-      throw new StreamIsClosedError(`trying to close stream '${this.name}' while it's already closed.`)
+      throw new StreamClosedTwiceError(`trying to close stream '${this.name}' while it's already closed.`)
     await this._close();
     if(this.cacheSize !== 0)
-      console.error(`
+      logger.warn(`
         WARNING: stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
         you probably forgot to flush!
         cache value: 0x${this.cacheByte.toString(16)}.
       `);
     this.#closed = true;
+    logger.log(`read stream '${this.name}' is closed.`)
   }
 
   async skip(size : Offset){
@@ -87,6 +91,10 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
       `)
     this.#locked = true;
 
+    logger.verbose(`
+      skipping ${offsetToString(size)} from read stream '${this.name}'
+    `);
+
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
       this.#locked = false;
       return
@@ -94,28 +102,45 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits <= this.cacheSize){
       this.cacheSize -= sizeBlock.bits;
-      this.cacheByte &= 0xFF >> (8-sizeBlock.bits)
+      this.cacheByte &= 0xFF >> (8-this.cacheSize)
       this.#locked = false;
       return
     }
 
     const toSkipBlock = sizeBlock.subtract(new OffsetBlock(0,this.cacheSize));
     const bytesToSkip = toSkipBlock.floor();
-    const bytesToRead = toSkipBlock.ceil();
+    const bytesToRead = toSkipBlock.ceil() - bytesToSkip;
+    //console.log({sizeBlock,toSkipBlock,bytesToSkip,bytesToRead})
 
     // skip whole bytes
-    const success = await this._skip(bytesToSkip);
-    if(success === false)
-      throw new StreamReachedReadLimitError(`
-        stream '${this.name}' reached its end or limit while trying to skip ${bytesToSkip} bytes.
-      `);
-    if(bytesToRead === 0) return;
+    if(bytesToSkip > 0){
+      const success = await this._skip(bytesToSkip);
+      if(success === false){
+        throw new StreamReachedReadLimitError(`
+          stream '${this.name}' reached its end or limit while trying to skip ${bytesToSkip} bytes.
+        `);
+      }
+      logger.verbose(`
+        skipped ${bytesToSkip} bytes from underlying implementation of read stream '${this.name}'
+      `)
+    }
+    if(bytesToRead === 0) {
+      this.#locked = false;
+      return;
+    }
     // read the leftover bits that should be skipped in the last byte and cache the rest
     const buffer = await this._read(bytesToRead);
-    if(!buffer || buffer.byteLength < bytesToRead)
+    //console.log({buffer})
+    if(!buffer || buffer.byteLength < bytesToRead){
       throw new StreamReachedReadLimitError(`
         stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
+    }
+
+    logger.verbose(`
+      read ${bytesToRead} bytes from underlying implementation of read stream'${this.name}'.
+    `)
+
     const lastByte = (new Uint8Array(buffer,buffer.byteLength-1))[0];
     this.cacheSize = (8 - sizeBlock.subtract({bytes: 0 , bits: this.cacheSize}).bits ) % 8
     this.cacheByte = lastByte & (0xFF >> (8-this.cacheSize));
@@ -137,6 +162,10 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
       throw new StreamIsClosedError(`trying to read from stream '${this.name}' while it's already closed.`)
     this.#locked = true;
 
+    logger.verbose(`
+      reading ${offsetToString(size)} from read stream '${this.name}'...
+    `)
+
     const sizeBlock = offsetToBlock(size);
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
@@ -154,15 +183,17 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
       return convertToSkelfBuffer(uint8.buffer,sizeBlock);
     }
 
-    const sizeInBytes = sizeBlock.ceil();
     const bytesToRead = sizeBlock.subtract({bytes: 0, bits: this.cacheSize}).ceil();
 
     const buffer = await this._read(bytesToRead);
-    if(!buffer || buffer.byteLength < bytesToRead)
+    if(!buffer || buffer.byteLength < bytesToRead){
       throw new StreamReachedReadLimitError(`
         stream '${this.name}' reached its end or limit while trying to read ${bytesToRead} bytes from it.
       `);
-
+    }
+    logger.verbose(`
+      read ${bytesToRead} bytes from underlying implementation of read stream '${this.name}'.
+    `)
     if(this.cacheSize === 0 && sizeBlock.bits === 0){
       this.#locked = false;
       return convertToSkelfBuffer(buffer,sizeBlock);

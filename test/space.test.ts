@@ -11,6 +11,7 @@ import {
   ReadOutsideSpaceBoundaryError,
   WriteOutsideSpaceBoundaryError
 } from "skelf/errors"
+
 import {convertToSkelfBuffer} from "skelf/utils"
 
 
@@ -93,16 +94,16 @@ describe("locked flag",()=>{
       await space.init();
       expect(space.locked).toBe(false);
     })
-    test("locked is handeled properly with write method",async ()=>{
+    test("locked is handled properly with write method",async ()=>{
       await space.init();
-      const promise = space.write(new ArrayBuffer(5),2) // this is intentionaly not awaited
+      const promise = space.write(new ArrayBuffer(5),2) // this is intentionally not awaited
       expect(space.locked).toBe(true);
       await promise;
       expect(space.locked).toBe(false);
     })
     test("locked is handeled properly with read method",async ()=>{
       await space.init();
-      const promise = space.read(5,5); // this is intentionaly not awaited
+      const promise = space.read(5,5); // this is intentionally not awaited
       expect(space.locked).toBe(true);
       await promise;
       expect(space.locked).toBe(false);
@@ -111,15 +112,15 @@ describe("locked flag",()=>{
   describe("throws when locked",()=>{
     beforeEach(async ()=>await space.init())
     test("read method throws when space is locked",async ()=>{
-      space.read(5,5); // this is intentionaly not awaited
+      space.read(5,5); // this is intentionally not awaited
       expect(async () => space.read(5,5)).rejects.toThrow(LockedSpaceError)
     })
     test("write method throws when space is locked",async ()=>{
-      space.read(5,5); // this is intentionaly not awaited
+      space.read(5,5); // this is intentionally not awaited
       expect(async () => space.write(new ArrayBuffer(5),5)).rejects.toThrow(LockedSpaceError)
     })
     test("close method throws when space is locked",async ()=>{
-      space.read(5,5); // this is intentionaly not awaited
+      space.read(5,5); // this is intentionally not awaited
       expect(async () => space.close()).rejects.toThrow(LockedSpaceError)
     })
   })
