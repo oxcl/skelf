@@ -184,7 +184,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     }
 
     const bytesToRead = sizeBlock.subtract({bytes: 0, bits: this.cacheSize}).ceil();
-    console.log({sizeBlock,bytesToRead})
+    //console.log({sizeBlock,bytesToRead})
 
     const receivedBuffer = await this._read(bytesToRead);
 
@@ -210,10 +210,10 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     const newCacheByte = uint8[uint8.byteLength-(shouldExpand?2:1)] & (0xFF >> (8-newCacheSize));
 
     shiftUint8ByBits(uint8,this.cacheSize);
-    console.log({bufferAfterShiftingForCache: buffer})
+    //console.log({bufferAfterShiftingForCache: buffer})
 
     uint8[0] = mergeBytes((this.cacheByte<<(8-this.cacheSize)) & 0xFF,uint8[0],this.cacheSize)
-    console.log({bufferAfterInjectingCacheBits : buffer})
+    //console.log({bufferAfterInjectingCacheBits : buffer})
     uint8[uint8.byteLength-1] >>= (8-sizeBlock.bits) % 8;
 
     this.cacheSize = newCacheSize;
