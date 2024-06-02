@@ -55,6 +55,7 @@ let stream = new DummyStream();
 beforeEach(()=>{
   stream = new DummyStream();
 })
+
 describe("ready flag",()=>{
   test("ready flag is handled properly",async ()=>{
     expect(stream.ready).toBe(false);
@@ -150,91 +151,87 @@ describe("closed flag",()=>{
     expect(stream.closeWasCalledTwice).toBe(false);
   })
 })
+const cacheCases = [
+  //  [cacheSize,cacheByte,index]
+  [0        ,0x00     ,0    ],
+  [1        ,0x01     ,1    ],
+  [3        ,0x05     ,2    ],
+  [7        ,0x5f     ,3    ]
+];
+const cases = [
+  //  [bytes,bits,index]
+  [0    ,1   ,0    ],
+  [0    ,3   ,1    ],
+  [0    ,5   ,2    ],
+  [0    ,7   ,3    ],
+  [1    ,0   ,4    ],
+  [1    ,6   ,5    ],
+  [3    ,0   ,6    ],
+  [3    ,4   ,7    ],
+] as const;
+const expectedResults = [
+  [
+    //    [cacheSize,cacheByte,skipSize,readSize],
+    [7        ,0x2a     ,null    ,1       ],
+    [5        ,0x0a     ,null    ,1       ],
+    [3        ,0x02     ,null    ,1       ],
+    [1        ,0x00     ,null    ,1       ],
+    [0        ,0x00     ,1       ,null    ],
+    [2        ,0x03     ,1       ,1       ],
+    [0        ,0x00     ,3       ,null    ],
+    [4        ,0x0d     ,3       ,1       ],
+  ],
+  [
+    [0        ,0x00     ,null    ,null    ],
+    [6        ,0x2a     ,null    ,1       ],
+    [4        ,0x0a     ,null    ,1       ],
+    [2        ,0x02     ,null    ,1       ],
+    [1        ,0x00     ,null    ,1       ],
+    [3        ,0x03     ,1       ,1       ],
+    [1        ,0x00     ,2       ,1       ],
+    [5        ,0x0d     ,3       ,1       ],
+  ],
+  [
+    [2        ,0x01     ,null    ,null    ],
+    [0        ,0x00     ,null    ,null    ],
+    [6        ,0x2a     ,null    ,1       ],
+    [4        ,0x0a     ,null    ,1       ],
+    [3        ,0x02     ,null    ,1       ],
+    [5        ,0x0b     ,1       ,1       ],
+    [3        ,0x04     ,2       ,1       ],
+    [7        ,0x2d     ,3       ,1       ],
+  ],
+  [
+    [6        ,0x1f     ,null    ,null    ],
+    [4        ,0x0f     ,null    ,null    ],
+    [2        ,0x03     ,null    ,null    ],
+    [0        ,0x00     ,null    ,null    ],
+    [7        ,0x2a     ,null    ,1       ],
+    [1        ,0x00     ,null    ,1       ],
+    [7        ,0x2c     ,2       ,1       ],
+    [3        ,0x04     ,2       ,1       ]
+  ]
+] as const;
 
-describe("skipping",()=>{
+describe.each(cacheCases)("skips when %d bits are cached", (cacheSize,cacheByte,cacheIndex)=>{
   let stream = new DummyArrayStream();
   beforeEach(async ()=>{
     stream = await new DummyArrayStream().init();
+    stream["cacheSize"] = cacheSize;
+    stream["cacheByte"] = cacheByte;
   })
-  const cacheCases = [
-//  [cacheSize,cacheByte,index]
-    [0        ,0x00     ,0    ],
-    [1        ,0x01     ,1    ],
-    [3        ,0x05     ,2    ],
-    [7        ,0x5f     ,3    ]
-  ];
-  const cases = [
-//  [bytes,bits,index]
-    [0    ,1   ,0    ],
-    [0    ,3   ,1    ],
-    [0    ,5   ,2    ],
-    [0    ,7   ,3    ],
-    [1    ,0   ,4    ],
-    [1    ,6   ,5    ],
-    [3    ,0   ,6    ],
-    [3    ,4   ,7    ],
-  ] as const;
-  const expectedResults = [
-    [
-//    [cacheSize,cacheByte,skipSize,readSize],
-      [7        ,0x2a     ,null    ,1       ],
-      [5        ,0x0a     ,null    ,1       ],
-      [3        ,0x02     ,null    ,1       ],
-      [1        ,0x00     ,null    ,1       ],
-      [0        ,0x00     ,1       ,null    ],
-      [2        ,0x03     ,1       ,1       ],
-      [0        ,0x00     ,3       ,null    ],
-      [4        ,0x0d     ,3       ,1       ],
-    ],
-    [
-      [0        ,0x00     ,null    ,null    ],
-      [6        ,0x2a     ,null    ,1       ],
-      [4        ,0x0a     ,null    ,1       ],
-      [2        ,0x02     ,null    ,1       ],
-      [1        ,0x00     ,null    ,1       ],
-      [3        ,0x03     ,1       ,1       ],
-      [1        ,0x00     ,2       ,1       ],
-      [5        ,0x0d     ,3       ,1       ],
-    ],
-    [
-      [2        ,0x01     ,null    ,null    ],
-      [0        ,0x00     ,null    ,null    ],
-      [6        ,0x2a     ,null    ,1       ],
-      [4        ,0x0a     ,null    ,1       ],
-      [3        ,0x02     ,null    ,1       ],
-      [5        ,0x0b     ,1       ,1       ],
-      [3        ,0x04     ,2       ,1       ],
-      [7        ,0x2d     ,3       ,1       ],
-    ],
-    [
-      [6        ,0x1f     ,null    ,null    ],
-      [4        ,0x0f     ,null    ,null    ],
-      [2        ,0x03     ,null    ,null    ],
-      [0        ,0x00     ,null    ,null    ],
-      [7        ,0x2a     ,null    ,1       ],
-      [1        ,0x00     ,null    ,1       ],
-      [7        ,0x2c     ,2       ,1       ],
-      [3        ,0x04     ,2       ,1       ]
-    ]
-  ] as const;
-  describe.each(cacheCases)("skips when %d bits are cached", (cacheSize,cacheByte,cacheIndex)=>{
-    beforeEach(()=>{
-      stream["cacheSize"] = cacheSize;
-      stream["cacheByte"] = cacheByte;
-    })
-    test.each(cases)("#%# skips %d bytes and %d bits",async (skipBytes,skipBits,skipIndex)=>{
-      const [
-        expectedCacheSize,
-        expectedCacheByte,
-        expectedSkipSize,
-        expectedReadSize
-      ] = expectedResults[cacheIndex][skipIndex];
-      await stream.skip({bytes: skipBytes, bits: skipBits})
-      expect(stream["latestSkipRequestSize"]).toBe(expectedSkipSize)
-      expect(stream["latestReadRequestSize"]).toBe(expectedReadSize)
-      expect(stream["cacheSize"]).toBe(expectedCacheSize)
-      expect(stream["cacheByte"]).toBe(expectedCacheByte)
-    })
+  test.each(cases)("#%# skips %d bytes and %d bits",async (skipBytes,skipBits,skipIndex)=>{
+    const [
+      expectedCacheSize,
+      expectedCacheByte,
+      expectedSkipSize,
+      expectedReadSize
+    ] = expectedResults[cacheIndex][skipIndex];
+    await stream.skip({bytes: skipBytes, bits: skipBits})
+    expect(stream["latestSkipRequestSize"]).toBe(expectedSkipSize)
+    expect(stream["latestReadRequestSize"]).toBe(expectedReadSize)
+    expect(stream["cacheSize"]).toBe(expectedCacheSize)
+    expect(stream["cacheByte"]).toBe(expectedCacheByte)
   })
 })
 
@@ -245,9 +242,9 @@ describe("reading",()=>{
   })
   const cacheCases = [
 //  [cacheSize,cacheByte,index]
-//    [0        ,0x00     ,0    ],
-//    [1        ,0x01     ,1    ],
-//    [3        ,0x05     ,2    ],
+    [0        ,0x00     ,0    ],
+    [1        ,0x01     ,1    ],
+    [3        ,0x05     ,2    ],
     [7        ,0x5f     ,3    ]
   ];
   const cases = [
@@ -309,14 +306,14 @@ describe("reading",()=>{
       stream["cacheSize"] = cacheSize;
       stream["cacheByte"] = cacheByte;
     })
-    test.each(cases)("#%# reads %d bytes and %d bits",async (readBytes,readBits,readIndex)=>{
+    test.each(cases)("#%# reads %d bytes and %d bits",async (bytes,bits,index)=>{
       const [
         expectedCacheSize,
         expectedCacheByte,
         expectedReadSize,
         expectedArray
-      ] = expectedResults[cacheIndex][readIndex];
-      const result = await stream.read({bytes: readBytes, bits: readBits})
+      ] = expectedResults[cacheIndex][index];
+      const result = await stream.read({bytes,bits})
       expect(stream["latestReadRequestSize"]).toBe(expectedReadSize)
       expect(stream["cacheSize"]).toBe(expectedCacheSize)
       expect(stream["cacheByte"]).toBe(expectedCacheByte)

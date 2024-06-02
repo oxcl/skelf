@@ -1,6 +1,8 @@
 import {Offset,ISkelfBuffer,ISkelfWriteStream,IOffsetBlock} from "skelf/types"
-import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedWriteLimitError} from "skelf/errors"
+import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedWriteLimitError,StreamClosedTwiceError} from "skelf/errors"
 import {offsetToBlock,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,groom,OffsetBlock} from "skelf/utils"
+import Logger from "skelf/log"
+const logger = new Logger("write_stream")
 
 export abstract class SkelfWriteStream implements ISkelfWriteStream {
   abstract readonly name : string;
@@ -29,6 +31,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       throw new StreamInitializedTwiceError(`initializing stream '${this.name}' while already initialized.`);
     await this._init();
     this.#ready = true;
+    logger.log(`write stream '${this.name}' is initialized`)
     return this;
   }
 
@@ -36,7 +39,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     if(this.locked)
       throw new LockedStreamError(`
         trying to close stream '${this.name}' while it's locked. this could be caused by a not awaited call
-        to a read/write method, which might be still pending.
+        to a write or flush method, which might be still pending.
       `);
     if(!this.ready)
       throw new StreamIsNotReadyError(`
@@ -44,21 +47,22 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
         with the init method before using them. this could be caused by a not awaited call to the init method.
       `)
     if(this.closed)
-      throw new StreamIsClosedError(`trying to close stream '${this.name}' while it's already closed.`)
+      throw new StreamClosedTwiceError(`trying to close stream '${this.name}' while it's already closed.`)
     await this._close();
     if(this.cacheSize !== 0)
-      console.error(groom(`
-        WARNING: stream '${this.name}' was closed while ${this.cacheSize} bits remained in the cache.
+      logger.warn(`
+        stream '${this.name}' was closed while ${this.cacheSize} bits remained in the cache.
         cache value: 0x${this.cacheByte.toString(16)}.
-      `));
+      `);
     this.#closed = true;
+    logger.log(`write stream '${this.name}' is closed.`)
   }
 
   async write(buffer : ISkelfBuffer | ArrayBuffer){
     if(this.locked)
       throw new LockedStreamError(`
         trying to write to stream '${this.name}' while it's locked. this could be caused by a not awaited call
-        to a read/write method, which might be still pending.
+        to a write or flush method, which might be still pending.
       `);
     if(!this.ready)
       throw new StreamIsNotReadyError(`
@@ -69,7 +73,11 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       throw new StreamIsClosedError(`trying to write to stream '${this.name}' while it's already closed.`)
     this.#locked = true;
 
+
     const sizeBlock = (buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength);
+    logger.verbose(`
+      writing ${sizeBlock} to write stream '${this.name}'...
+    `)
     const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
@@ -85,6 +93,10 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
           bytes to it.
         `)
       this.#locked = false;
+      logger.verbose(`
+        wrote '${buffer.byteLength}' bytes to underlying implementation of write stream '${this.name}'
+        without any bit manipulations.
+      `)
       return;
     }
 
@@ -125,11 +137,33 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
         bytes to it.
       `)
     this.#locked = false;
+    logger.verbose(`
+      wrote '${finalBuffer.byteLength}' bytes to the underlying implementation of write stream
+      '${this.name}'.
+    `)
     return;
   }
 
   async flush(){
-    if(this.cacheSize === 0) return 0;
+    if(this.locked)
+      throw new LockedStreamError(`
+        trying to flush stream '${this.name}' while it's locked. this could be caused by a not awaited call
+        to a write or flush method, which might be still pending.
+      `);
+    if(!this.ready)
+      throw new StreamIsNotReadyError(`
+        flushing stream '${this.name}' while it's not initialized. streams should be first initialized
+        with the init method before using them. this could be caused by a not awaited call to the init method.
+      `);
+    if(this.closed)
+      throw new StreamIsClosedError(`trying to flush stream '${this.name}' while it's already closed.`)
+
+    if(this.cacheSize === 0){
+      logger.verbose(`flush method for write stream '${this.name}' but there were no bits to flush`)
+      return 0;
+    }
+    this.#locked = true;
+
     const result = await this._write(
       new Uint8Array([
         mergeBytes(this.cacheByte,0x00,this.cacheSize)
@@ -143,6 +177,8 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
     const bitsFlushed = 8 - this.cacheSize;
     this.cacheSize = 0;
     this.cacheByte = 0;
+    this.#locked = false;
+    logger.verbose(`flushed ${bitsFlushed} bits from cache into write stream '${this.name}'.`)
     return bitsFlushed;
   }
 }

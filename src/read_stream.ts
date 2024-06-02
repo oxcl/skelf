@@ -64,7 +64,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
     await this._close();
     if(this.cacheSize !== 0)
       logger.warn(`
-        WARNING: stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
+        stream ${this.name} was closed while ${this.cacheSize} bits remained in the cache.
         you probably forgot to flush!
         cache value: 0x${this.cacheByte.toString(16)}.
       `);
