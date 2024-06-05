@@ -79,7 +79,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       writing ${sizeBlock} to write stream '${this.name}'...
     `)
     const emptySpace = new OffsetBlock(buffer.byteLength).subtract(sizeBlock).bits;
-    console.log({buffer,sizeBlock,emptySpace})
+    //console.log({buffer,sizeBlock,emptySpace})
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
       this.#locked = false;
@@ -130,7 +130,7 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
       this.cacheByte = leftoverBits;
       finalBuffer = clonedBuffer;
     }
-    console.log({finalBuffer})
+    //console.log({finalBuffer})
 
     const result = await this._write(finalBuffer);
     if(result === false)

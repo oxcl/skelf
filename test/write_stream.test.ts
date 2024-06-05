@@ -47,7 +47,6 @@ class DummyArrayStream extends SkelfWriteStream {
     this.array = new Array(100).fill(null).map((value,index) => 0xa5 + index)
   }
   override async _write(buffer : ArrayBuffer){
-    console.log({writeRequest: buffer})
     for(const num of new Uint8Array(buffer)){
       this.array[this.offset++] = num;
     }
@@ -128,21 +127,21 @@ describe("locked flag",()=>{
 
 const cacheCases = [
 //[size,byte,index]
-//  [0   ,0x00,0    ],
+  [0   ,0x00,0    ],
   [2   ,0x40,1    ],
-//  [5   ,0x98,2    ],
-//  [7   ,0xd6,3    ]
+  [5   ,0x98,2    ],
+  [7   ,0xd6,3    ]
 ] as const;
 
 const cases = [
 //[bytes,bits,index,array]
-//  [0    ,1   ,0    ,[0x01]],
-//  [0    ,4   ,1    ,[0x0e]],
-//  [0    ,7   ,2    ,[0x8c]],
-//  [1    ,0   ,3    ,[0x66]],
-//  [1    ,3   ,4    ,[0x99,0x05]],
+  [0    ,1   ,0    ,[0x01]],
+  [0    ,4   ,1    ,[0x0e]],
+  [0    ,7   ,2    ,[0x8c]],
+  [1    ,0   ,3    ,[0x66]],
+  [1    ,3   ,4    ,[0x99,0x05]],
   [2    ,0   ,5    ,[0x00,0x43]],
-//  [3    ,7   ,6    ,[0x00,0xe9,0x01,0xff]]
+  [3    ,7   ,6    ,[0x00,0xe9,0x01,0xff]]
 ] as const;
 
 
@@ -163,10 +162,29 @@ const expectedResults = [
     [1        ,0x00     ,[0x46]],
     [2        ,0x80     ,[0x59]],
     [5        ,0x68     ,[0x66]],
-    [2        ,0xc0     ,[0x40,0x10]]
+    [2        ,0xc0     ,[0x40,0x10]],
+    [1        ,0x80     ,[0x40,0x3a,0x40,0x7f]]
+  ],
+  [
+    [6        ,0x9c     ,[]],
+    [1        ,0x00     ,[0x9f]],
+    [4        ,0xc0     ,[0x98]],
+    [5        ,0x30     ,[0x9b]],
+    [0        ,0x00     ,[0x9c,0xcd]],
+    [5        ,0x18     ,[0x98,0x02]],
+    [4        ,0xf0     ,[0x98,0x07,0x48,0x0f]]
+  ],
+  [
+    [0        ,0x00     ,[0xd7]],
+    [3        ,0xc0     ,[0xd7]],
+    [6        ,0x30     ,[0xd6]],
+    [7        ,0xcc     ,[0xd6]],
+    [2        ,0x40     ,[0xd7,0x33]],
+    [7        ,0x86     ,[0xd6,0x00]],
+    [6        ,0xfc     ,[0xd6,0x01,0xd2,0x03]]
   ]
 ];
-describe.only.each(cacheCases)("writes correctly when %d bits are cached",(cacheSize,cacheByte,cacheIndex)=>{
+describe.each(cacheCases)("writes correctly when %d bits are cached",(cacheSize,cacheByte,cacheIndex)=>{
   let stream = new DummyArrayStream();
   beforeEach(async ()=>{
     stream = await new DummyArrayStream().init();
