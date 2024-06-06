@@ -1,4 +1,4 @@
-// pollyfill for node.js Buffer type
+// polyfill for node.js Buffer type
 declare global {
   interface Buffer {}
   interface FileHandle {
