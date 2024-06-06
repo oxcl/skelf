@@ -1,10 +1,10 @@
 import {ISkelfDataType,ISkelfReadStream,ISkelfWriteStream,SkelfInput,SkelfOutput,Offset,ISkelfSpace,ISkelfReader,ISkelfWriter,ISkelfBuffer,IOffsetBlock} from "skelf/types"
 import {BufferSpace,ArraySpace,IteratorReadStream,FileSpace} from "skelf/core"
-import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBlock,convertToSkelfBuffer,offsetToString,isWriter,isReader,isFileHandle,OffsetBlock} from "skelf/utils"
+import {isSpace,isReadStream,isWriteStream,isBufferLike,offsetToBlock,convertToSkelfBuffer,offsetToString,isWriter,isReader,isFileHandle,OffsetBlock,ZERO_BUFFER} from "skelf/utils"
 import {UnknownInputForDataType,UnknownOutputForDataType,ConstraintError,UnexpectedSizeError} from "skelf/errors"
 // a skelf data type accept a variety of different types for the input and output arguments. this class is an
-// implementation of the ISkelfDataType intreface which abstracts the complexity of working with all sorts
-// of input and output types by converting them all into a simple ISkelfReadStream/ISkelfWriteStream.
+// implementation of the ISkelfDataType interface which abstracts the complexity of working with all sorts
+// of input and output types by converting them all into a simple ISkelfReader/ISkelfWriter.
 // this way the creator of the data type could easily implement it without worrying about different
 // input/output arguments while the user of the data type could provide any valid input/output type that is
 // supported by ISkelfDataType interface
@@ -50,7 +50,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       else if(Array.isArray(input)){
         if(input.every(item => typeof item === "number"))
           throw new UnknownInputForDataType(`
-            recieved an invalid array as input value for data type '${options.name}'
+            received an invalid array as input value for data type '${options.name}'
             because some of it contains some non number values.
           `);
         const space = await new ArraySpace(input as number[],options.name).init();
@@ -63,7 +63,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       }
       else
         throw new UnknownInputForDataType(`
-          recieved unknown input value '${input.toString()}' for data type '${options.name}'.
+          received unknown input value '${input.toString()}' for data type '${options.name}'.
         `);
 
       const offsetBeforeRead = OffsetBlock.clone(reader.offset);
@@ -98,7 +98,11 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
           `)
       }
       let writer : ISkelfWriter;
-      if(isWriter(output)){
+      if(isFileHandle(output)){
+        const space = await new FileSpace(output as FileHandle, options.name).init();
+        writer = new SpaceWriter(space,offset);
+      }
+      else if(isWriter(output)){
         writer = output as ISkelfWriter;
       }
       else if(isSpace(output)){
@@ -120,7 +124,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       }
       else
         throw new UnknownOutputForDataType(`
-          recieved unknown output value '${output.toString()}' for data type '${options.name}'.
+          received unknown output value '${output.toString()}' for data type '${options.name}'.
         `)
       const offsetBeforeWrite = OffsetBlock.clone(writer.offset);
       const result = await options.write(writer,value);
@@ -149,8 +153,10 @@ export class SpaceReader implements ISkelfReader {
     this.#offset = offsetToBlock(initialOffset);
   }
   async read(size : Offset){
+    const sizeBlock = offsetToBlock(size);
+    if(OffsetBlock.isZero(sizeBlock)) return ZERO_BUFFER;
     const result = await this.space.read(size,this.offset);
-    this.#offset = this.#offset.add(offsetToBlock(size));
+    this.#offset = this.#offset.add(sizeBlock);
     return result;
   }
   async skip(size : Offset){
@@ -167,8 +173,10 @@ export class SpaceWriter implements ISkelfWriter {
     this.#offset = offsetToBlock(initialOffset);
   }
   async write(buffer : ISkelfBuffer | ArrayBuffer){
+    const sizeBlock = (buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength);
+    if(OffsetBlock.isZero(sizeBlock)) return;
     await this.space.write(buffer,this.offset);
-    this.#offset = this.#offset.add((buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength));
+    this.#offset = this.#offset.add(sizeBlock);
   }
   async flush(){
     if(this.offset.bits === 0) return;
@@ -186,8 +194,10 @@ export class StreamReader implements ISkelfReader {
     this.name = stream.name;
   }
   async read(size : Offset){
+    const sizeBlock = offsetToBlock(size)
+    if(OffsetBlock.isZero(sizeBlock)) return ZERO_BUFFER;
     const result = await this.stream.read(size);
-    this.#offset = this.#offset.add(result.size);
+    this.#offset = this.#offset.add(sizeBlock);
     return result;
   }
   async skip(size : Offset){
@@ -204,9 +214,10 @@ export class StreamWriter implements ISkelfWriter {
     this.name = stream.name;
   }
   async write(buffer : ArrayBuffer | ISkelfBuffer){
+    const sizeBlock = (buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength);
+    if(OffsetBlock.isZero(sizeBlock)) return;
     const result = await this.stream.write(buffer);
-    this.#offset = this.#offset.add((buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength));
-    return result;
+    this.#offset = this.#offset.add(sizeBlock);
   }
   async flush(){
     const bitsFlushed = await this.stream.flush();

@@ -11,7 +11,7 @@ export class FileSpace extends SkelfSpace {
   constructor(
     private readonly fileOrPromise : FileHandle | Promise<FileHandle>,
     override readonly name : string = "fileHandle",
-    private readonly chunkCapacity : number = 1024 * 1024
+    private readonly chunkCapacity : number = 1024
   ){
     super();
     this.readChunk = new ArrayBuffer(chunkCapacity);

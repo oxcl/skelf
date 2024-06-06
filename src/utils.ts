@@ -206,6 +206,9 @@ export class OffsetBlock implements IOffsetBlock {
   isZero(){
     return this.bytes === 0 && this.bits === 0;
   }
+  static isZero(offset : IOffsetBlock){
+    return offset.bytes === 0 && offset.bits === 0;
+  }
   multiply(number : number){
     return new OffsetBlock(this.bytes*number,this.bits*number);
   }
@@ -256,3 +259,5 @@ function parseOffsetString(offsetString : string){
     );
   }
 }
+
+export const ZERO_BUFFER = convertToSkelfBuffer(new ArrayBuffer(0),new OffsetBlock(0,0))

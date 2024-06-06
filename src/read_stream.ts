@@ -1,6 +1,6 @@
 import {Offset,ISkelfReadStream,IOffsetBlock} from "skelf/types"
 import {StreamInitializedTwiceError,LockedStreamError,StreamIsClosedError,StreamIsNotReadyError,StreamReachedReadLimitError,StreamClosedTwiceError} from "skelf/errors"
-import {offsetToBlock,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,OffsetBlock} from "skelf/utils"
+import {offsetToBlock,mergeBytes,offsetToString,cloneBuffer,shiftUint8ByBits,convertToSkelfBuffer,OffsetBlock,ZERO_BUFFER} from "skelf/utils"
 import Logger from "skelf/log"
 const logger = new Logger("read_stream")
 
@@ -170,7 +170,7 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits === 0){
       this.#locked = false;
-      return convertToSkelfBuffer(new ArrayBuffer(0),new OffsetBlock(0,0));
+      return ZERO_BUFFER;
     }
 
     if(sizeBlock.bytes === 0 && sizeBlock.bits <= this.cacheSize){

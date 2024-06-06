@@ -1,6 +1,6 @@
 import {ISkelfSpace,ISkelfBuffer,Offset,IOffsetBlock} from "skelf/types"
 import {LockedSpaceError,SpaceInitializedTwiceError,SpaceIsClosedError,SpaceIsNotReadyError,WriteOutsideSpaceBoundaryError,ReadOutsideSpaceBoundaryError,SpaceClosedTwiceError,InvalidArgumentError} from "skelf/errors"
-import {mergeBytes,offsetToBlock,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer,offsetToString,OffsetBlock} from "skelf/utils"
+import {mergeBytes,offsetToBlock,convertToSkelfBuffer,shiftUint8ByBits,cloneBuffer,offsetToString,OffsetBlock,ZERO_BUFFER} from "skelf/utils"
 import Logger from "skelf/log"
 const logger = new Logger("space")
 // since javascript (and most computers in general) are not capable of working with individual bits directly,
@@ -92,7 +92,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
     const sizeBlock = offsetToBlock(size); // size of the buffer that should be read in bits
     //console.log({sizeBlock})
 
-    if(sizeBlock.isZero()) return convertToSkelfBuffer(new ArrayBuffer(0),new OffsetBlock(0,0))
+    if(sizeBlock.isZero()) return ZERO_BUFFER;
 
     if(sizeBlock.bytes < 0 || sizeBlock.bits < 0 || offsetBlock.bytes < 0 || offsetBlock.bits < 0)
       throw new InvalidArgumentError(`
