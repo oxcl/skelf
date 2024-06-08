@@ -30,11 +30,6 @@ export abstract class SkelfSpace implements ISkelfSpace {
   readonly type = "space";
 
 
-  // sometimes when working with different sources and providers it is required to offset the data by a certain
-  // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
-  // data at the beginning of the source and pretend it does not exists. most of the time this isn't necessary.
-  // so the default value for it is 0.
-
   // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
   // abstracted away for the creator of the space
@@ -186,6 +181,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // extract the ArrayBuffer and bitLength values if input is a Skelf Buffer. if input is an ArrayBuffer
     // bitLength is assumed to be the length of the whole Array
+    if(buffer instanceof Uint8Array) buffer = buffer.buffer;
     const sizeBlock = (buffer as ISkelfBuffer).size ?? new OffsetBlock(buffer.byteLength);
 
     logger.verbose(`
@@ -195,6 +191,7 @@ export abstract class SkelfSpace implements ISkelfSpace {
 
     // how many bits should be offseted
     const offsetBlock = offsetToBlock(offset);
+    //console.log({buffer,offsetBlock})
 
     if(offsetBlock.bytes < 0)
       throw new InvalidArgumentError(`

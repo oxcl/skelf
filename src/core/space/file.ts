@@ -1,6 +1,11 @@
 import {SkelfSpace} from "skelf/space"
 import  {copyBuffer} from "skelf/utils"
 
+
+// adapter for fileHandle object of node.js fs module. this should also work fine with any other
+// fileHandle object uses the same interface as node.js. in internal buffering mechanism is used
+// to reduce the number of read and write requests. that's why closing the space is really important
+// because only by closing the space the remaining bytes are flushed from the buffer into the file.
 export class FileSpace extends SkelfSpace {
   private file! : FileHandle;
   private readChunk : ArrayBuffer;
@@ -27,6 +32,13 @@ export class FileSpace extends SkelfSpace {
     if(this.writeChunkSize !== 0){
       await this.flushWriteChunk();
     }
+
+    if(size >= this.chunkCapacity){
+      const uint8 = new Uint8Array(size);
+      await this.file.read(uint8,0,size,position);
+      return uint8.buffer
+    }
+
     if(
       Number.isNaN(this.readChunkOffset)
       || position < this.writeChunkOffset
@@ -56,7 +68,6 @@ export class FileSpace extends SkelfSpace {
   }
   override async _close(){
     await this.flushWriteChunk();
-    await this.file.close();
   }
 
   private async flushWriteChunk(){

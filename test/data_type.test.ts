@@ -50,7 +50,3 @@ const dummy = createDataType<ArrayBuffer>({
     await writer.write(value);
   }
 })
-
-
-describe("data type works with different types of input & output",()=>{
-})
