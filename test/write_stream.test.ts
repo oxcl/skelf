@@ -15,25 +15,7 @@ import {
   StreamClosedTwiceError
 } from "skelf/errors"
 
-class DummyStream extends SkelfWriteStream {
-  name = "dummyStream"
-  initWasCalled = false;
-  initWasCalledTwice = false;
-  closeWasCalled = false;
-  closeWasCalledTwice = false;
-  latestWriteRequestBuffer !:  ArrayBuffer;
-  override async _init(){
-    if(this.initWasCalled) this.initWasCalledTwice = true;
-    this.initWasCalled = true;
-  }
-  override async _close(){
-    if(this.closeWasCalled) this.closeWasCalledTwice = true;
-    this.closeWasCalled = true;
-  }
-  async _write(buffer : ArrayBuffer){
-    this.latestWriteRequestBuffer = buffer;
-  }
-}
+import {DummyWriteStream} from "skelf/core"
 
 class DummyArrayStream extends SkelfWriteStream {
   name = "dummyStream";
@@ -53,9 +35,9 @@ class DummyArrayStream extends SkelfWriteStream {
   }
 }
 
-let stream = new DummyStream();
+let stream = new DummyWriteStream();
 beforeEach(()=>{
-  stream = new DummyStream();
+  stream = new DummyWriteStream();
 })
 
 describe("ready flag",()=>{

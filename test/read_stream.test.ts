@@ -9,25 +9,7 @@ import {
   StreamIsClosedError,
   StreamClosedTwiceError
 } from "skelf/errors"
-
-class DummyStream extends SkelfReadStream {
-  name = "dummyStream";
-  initWasCalled = false;
-  initWasCalledTwice = false;
-  closeWasCalled = false;
-  closeWasCalledTwice = false;
-  override async _init(){
-    if(this.initWasCalled) this.initWasCalledTwice = true;
-    this.initWasCalled = true;
-  }
-  override async _close(){
-    if(this.closeWasCalled) this.closeWasCalledTwice = true;
-    this.closeWasCalled = true;
-  }
-  async _read(size : number){
-    return new ArrayBuffer(size);
-  }
-}
+import {DummyReadStream} from "skelf/core"
 
 class DummyArrayStream extends SkelfReadStream {
   name = "dummyArrayStream";
@@ -51,9 +33,9 @@ class DummyArrayStream extends SkelfReadStream {
   }
 }
 
-let stream = new DummyStream();
+let stream = new DummyReadStream();
 beforeEach(()=>{
-  stream = new DummyStream();
+  stream = new DummyReadStream();
 })
 
 describe("ready flag",()=>{

@@ -1,11 +1,20 @@
 import {
   createDataType,
+  SpaceReader,
+  SpaceWriter,
+  StreamReader,
+  StreamWriter
 } from "skelf/data_type"
-import {ISkelfReader,ISkelfWriter,Offset} from "skelf/types"
+import {ISkelfReader,ISkelfWriter,Offset,ISkelfBuffer} from "skelf/types"
 import {OffsetBlock,offsetToBlock,convertToSkelfBuffer} from "skelf/utils"
 
+describe("SpaceReader",()=>{
+
+})
+
 class DummyReader implements ISkelfReader {
-  readonly name = "dummyReader",
+  readonly name = "dummyReader";
+  readonly type = "reader";
   offset = new OffsetBlock(0,0);
   callTrace : Offset[] = []
   async read(size : Offset){
@@ -19,9 +28,9 @@ class DummyReader implements ISkelfReader {
   }
 }
 
-
 class DummyWriter implements ISkelfWriter {
-  readonly name = "dummyWriter",
+  readonly name = "dummyWriter";
+  readonly type = "writer"
   offset = new OffsetBlock(0,0);
   callTrace : Offset[] = []
   async write(buffer : ArrayBuffer | ISkelfBuffer){
