@@ -12,7 +12,8 @@ export interface ISkelfSpace {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
-  name  : string;
+  readonly type  : "space";
+  readonly name  : string;
   init  : () => Promise<ISkelfSpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
@@ -23,6 +24,7 @@ export interface ISkelfReadStream {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
+  readonly type  : "readStream";
   name  : string;
   close : () => Promise<void>;
   init  : () => Promise<ISkelfReadStream>;
@@ -34,6 +36,7 @@ export interface ISkelfWriteStream {
   readonly locked : boolean;
   readonly ready  : boolean;
   readonly closed : boolean;
+  readonly type  : "writeStream"
   name  : string;
   close : () => Promise<void>;
   init  : () => Promise<ISkelfWriteStream>;
@@ -71,6 +74,7 @@ export interface ISkelfDataType<T> {
 }
 
 export interface ISkelfReader {
+  readonly type : "reader";
   readonly name : string;
   readonly offset : IOffsetBlock
   readonly skip : (size : Offset) => Promise<void>;
@@ -78,6 +82,7 @@ export interface ISkelfReader {
 }
 
 export interface ISkelfWriter {
+  readonly type : "writer";
   readonly name : string;
   readonly offset : IOffsetBlock
   readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;

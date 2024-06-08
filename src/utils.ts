@@ -131,34 +131,34 @@ export function groom(str : string){
   return str.replace(/\n[ \t]+/g," ").trim();
 }
 
-export function isSpace(obj : any){
-  return (obj instanceof SkelfSpace) ||
-    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function");
-}
-export function isWriteStream(obj : any){
-  return (obj instanceof SkelfWriteStream) ||
-    (typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function");
-}
-export function isWriter(obj : any){
-  return typeof obj === "object" && typeof obj.write === "function" && typeof obj.flush === "function" &&
-    typeof obj.offset === "number";
-}
-
-export function isReadStream(obj : any){
-  return (obj instanceof SkelfReadStream) ||
-    (typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function");
-}
-export function isReader(obj :any){
-  return typeof obj === "object" && typeof obj.read === "function" && typeof obj.skip === "function" &&
-    typeof obj.offset === "number";
-}
-
-export function isBufferLike(obj : any){
-  return obj instanceof ArrayBuffer || obj instanceof Uint8Array;
-}
-
-export function isFileHandle(obj : any){
-  return (obj.constructor && obj.constructor.name === "FileHandle") || (typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function" && typeof obj.close === "function");
+export function detectType(obj : any) : string{
+  if(typeof obj !== "object"){
+    return "unknown"
+  }
+  else if("type" in obj){
+    return obj["type"] as string;
+  }
+  else if(obj instanceof ArrayBuffer || obj instanceof Uint8Array){
+    return "bufferLike"
+  }
+  else if(
+    (obj.constructor && obj.constructor.name === "FileHandle")
+    || (
+      typeof obj === "object" && typeof obj.read === "function" && typeof obj.write === "function"
+      && typeof obj.close === "function"
+    )
+  ){
+    return "fileHandle";
+  }
+  else if(Array.isArray(obj)){
+    return "array";
+  }
+  else if(typeof obj === "function" || (typeof obj === "object" && Symbol.iterator in obj)){
+    return "iterator";
+  }
+  else {
+    return "unknown";
+  }
 }
 
 export class OffsetBlock implements IOffsetBlock {

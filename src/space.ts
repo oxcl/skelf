@@ -27,6 +27,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
   get closed(){ return this.#closed };
   #closed : boolean = false;
 
+  readonly type = "space";
+
 
   // sometimes when working with different sources and providers it is required to offset the data by a certain
   // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of

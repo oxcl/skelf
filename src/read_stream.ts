@@ -19,6 +19,8 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   private cacheByte : number = 0;
   private cacheSize : number = 0;
 
+  readonly type = "readStream";
+
 
   // sometimes when working with different sources and providers it is required to offset the data by a certain
   // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
