@@ -40,3 +40,17 @@ class DummyWriter implements ISkelfWriter {
     return;
   }
 }
+
+const dummy = createDataType<ArrayBuffer>({
+  name: "dummy",
+  async read(reader){
+    return await reader.read(1);
+  },
+  async write(writer,value){
+    await writer.write(value);
+  }
+})
+
+
+describe("data type works with different types of input & output",()=>{
+})

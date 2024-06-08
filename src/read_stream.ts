@@ -22,12 +22,6 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   readonly type = "readStream";
 
 
-  // sometimes when working with different sources and providers it is required to offset the data by a certain
-  // amount (usually a few bits). what offset means in this context is to ignore and skip a certain amount of
-  // data at the beginning of the source and pretend it does not exists. most of the time this isn't necessary.
-  // so the default value for it is 0.
-  protected initialOffsetBlock : IOffsetBlock = new OffsetBlock(0,0);
-
 
   // these functions should be provided by the child class the arguments for these functions only accept whole
   // byte values so all the logic for working with bits is abstracted away for the creator of the stream.
@@ -44,8 +38,6 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
       throw new StreamInitializedTwiceError(`initializing stream '${this.name}' while already initialized.`);
     await this._init();
     this.#ready = true;
-    if(this.initialOffsetBlock.bits > 0 || this.initialOffsetBlock.bytes > 0)
-      await this.skip(this.initialOffsetBlock);
     logger.log(`read stream '${this.name}' is initialized`);
     return this;
   }

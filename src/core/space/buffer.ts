@@ -2,7 +2,7 @@ import {SkelfSpace} from "skelf/space"
 import {shiftUint8ByBits,copyBuffer,OffsetBlock} from "skelf/utils"
 import {ISkelfBuffer} from "skelf/types"
 
-type BufferLike = ArrayBuffer | Uint8Array | ISkelfBuffer | Buffer;
+type BufferLike = ArrayBuffer | Uint8Array | Buffer;
 
 export class BufferSpace extends SkelfSpace {
   static count : number = 0;
@@ -15,11 +15,6 @@ export class BufferSpace extends SkelfSpace {
     if(bufferLike instanceof Uint8Array){
       this.buffer = bufferLike.buffer;
       this.byteOffset = bufferLike.byteOffset;
-    }
-    else if("size" in (bufferLike as any)){
-      this.buffer = bufferLike;
-      this.byteOffset = 0;
-      this.initialOffsetBlock = new OffsetBlock(bufferLike.byteLength).subtract((bufferLike as ISkelfBuffer).size);
     }
     else {
       this.byteOffset = 0;
