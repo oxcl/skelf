@@ -8,9 +8,6 @@ import {
 import {ISkelfReader,ISkelfWriter,Offset,ISkelfBuffer} from "skelf/types"
 import {OffsetBlock,offsetToBlock,convertToSkelfBuffer} from "skelf/utils"
 
-describe("SpaceReader",()=>{
-
-})
 
 class DummyReader implements ISkelfReader {
   readonly name = "dummyReader";
