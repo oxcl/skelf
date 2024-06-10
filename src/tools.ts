@@ -28,11 +28,12 @@ function deepEqual(x : any, y : any) {
 export async function testDataTypeSymmetry<T>(
   dataType : ISkelfDataType<T>,
   space : ISkelfSpace,
-  sample : T
+  sample : T,
+  testFunction : (one : any, two : any ) => boolean = deepEqual
 ){
   await dataType.write(sample,space)
   const result = await dataType.read(space)
-  if(!deepEqual(result,sample)){
+  if(!testFunction(result,sample)){
     throw new AsymmetricDataTypeError(`
       data type ${dataType.name} is asymmetric for the provided sample value.
       sample: "${JSON.stringify(sample,null,2).slice(0,200)}".
