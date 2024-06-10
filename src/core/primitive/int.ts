@@ -1,6 +1,6 @@
 import {createDataType} from "skelf/data_type"
 import {InvalidIntegerSizeError} from "skelf/errors"
-import {convertToSkelfBuffer,OffsetBlock} from "skelf/utils"
+import {convertToSkelfBuffer,OffsetBlock, shiftUint8ByBits} from "skelf/utils"
 
 function createIntDataType(size : number,signed : boolean,littleEndian : boolean,name : string){
   if(size <= 1 && signed )
@@ -23,8 +23,12 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
     encodeFunction = (view,value) => view.setUint8(0,value);
   }
   else if(size <= 16){
-    decodeFunction = (view) => view.getUint16(0,littleEndian);
-    encodeFunction = (view,value) => view.setUint16(0,value,littleEndian);
+    decodeFunction = (view) => {
+      return view.getUint16(0,littleEndian);
+    }
+    encodeFunction = (view,value) => {
+      view.setUint16(0,value,littleEndian);
+    }
   }
   else if(size <= 24){
     if(littleEndian){
@@ -78,11 +82,23 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
     size : sizeBlock,
     read: async function readInt(reader){
       const buffer = await reader.read(`${size}b`);
+      const shift = buffer.byteLength*8 - size;
+      if(!littleEndian && shift){
+        const uint8 = new Uint8Array(buffer);
+        uint8[uint8.byteLength-1] <<= shift;
+        shiftUint8ByBits(uint8,shift)
+      }
       return decodeFunction(new DataView(buffer));
     },
     write: async function writeInt(writer,value){
       const buffer = new ArrayBuffer(sizeBlock.ceil())
       encodeFunction(new DataView(buffer),value);
+      const shift = buffer.byteLength*8 - size;
+      if(!littleEndian && shift){
+        const uint8 = new Uint8Array(buffer);
+        shiftUint8ByBits(uint8,-shift)
+        uint8[uint8.byteLength-1] >>= shift;
+      }
       await writer.write(convertToSkelfBuffer(buffer,sizeBlock));
     },
     constraint(value){
