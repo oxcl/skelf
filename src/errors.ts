@@ -86,3 +86,7 @@ export class UnexpectedSizeError extends SkelfError {
 export class LoggerConfiguredTwiceError extends SkelfError {
   override name = "LOGGER_CONFIGURED_TWICE_ERROR"
 }
+
+export class AsymmetricDataTypeError extends SkelfError {
+  override name = "ASYMMETRIC_DATA_TYPE_ERROR"
+}

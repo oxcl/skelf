@@ -6,7 +6,7 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
   if(size <= 1 && signed )
     throw new InvalidIntegerSizeError(`
       failed to create integer data type because size of ${size} bits is invalid for a signed integer.
-      signed integers should atleast have a size of  2 bits.
+      signed integers should at least have a size of  2 bits.
     `)
   if(size <= 0 || size > 32)
     throw new InvalidIntegerSizeError(`
@@ -29,17 +29,19 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
   else if(size <= 24){
     if(littleEndian){
       encodeFunction = (view,value) => {
-        view.setUint16(0,value & 0x00FFF,littleEndian);
+        view.setUint16(0,value & 0x0FFFF,littleEndian);
         view.setUint8(2,value >> 16);
       }
-      decodeFunction = (view) => view.getUint16(0,littleEndian) + view.getUint8(2) << 16;
+      decodeFunction = (view) => {
+        return view.getUint16(0,littleEndian) + (view.getUint8(2) << 16);
+      }
     }
     else {
       encodeFunction = (view,value) => {
         view.setUint16(1,value & 0x00FFFF,littleEndian);
         view.setUint8(0,value >> 16);
       }
-      decodeFunction = (view) => view.getUint16(1,littleEndian) + view.getUint8(0) << 16;
+      decodeFunction = (view) => view.getUint16(1,littleEndian) + (view.getUint8(0) << 16);
     }
   }
   else {
@@ -69,6 +71,8 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
     }
   }
   const sizeBlock = new OffsetBlock(0,size);
+  const positiveLimit = (signed) ?  Math.pow(2,size-1)-1 : Math.pow(2,size)-1
+  const negativeLimit = (signed) ? -Math.pow(2,size-1)   : 0
   return createDataType<number>({
     name : name,
     size : sizeBlock,
@@ -80,6 +84,15 @@ function createIntDataType(size : number,signed : boolean,littleEndian : boolean
       const buffer = new ArrayBuffer(sizeBlock.ceil())
       encodeFunction(new DataView(buffer),value);
       await writer.write(convertToSkelfBuffer(buffer,sizeBlock));
+    },
+    constraint(value){
+      if(value < negativeLimit){
+        return `value ${value} is smaller than the smallest possible value for ${name} (${negativeLimit})`
+      }
+      if(value > positiveLimit){
+        return `value ${value} is bigger than the biggest possible value for ${name} (${positiveLimit})`
+      }
+      return true;
     }
   })
 }

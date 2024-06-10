@@ -1,4 +1,4 @@
-import {ISkelfBuffer,Offset,ISkelfReader,ISkelfReadStream,IOffsetBlock} from "skelf/types"
+ import {ISkelfBuffer,Offset,ISkelfReader,ISkelfReadStream,IOffsetBlock} from "skelf/types"
 import {InvalidOffsetError,SkelfError,InvalidArgumentError,OutOfRangeError} from "skelf/errors"
 import {SkelfSpace} from "skelf/space"
 import {SkelfReadStream} from "skelf/read_stream"

@@ -50,3 +50,9 @@ const dummy = createDataType<ArrayBuffer>({
     await writer.write(value);
   }
 })
+
+describe("pass",()=>{
+  test("pass",()=>{
+
+  })
+})
