@@ -9,7 +9,7 @@ import {testDataTypeSymmetry} from "skelf/tools"
 import {AsymmetricDataTypeError} from "skelf/errors"
 
 let space : ArraySpace;
-beforeAll(async ()=>{
+beforeEach(async ()=>{
   space = await new ArraySpace(new Array(50)).init();
 })
 

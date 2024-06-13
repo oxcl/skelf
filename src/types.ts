@@ -14,6 +14,8 @@ export interface ISkelfSpace {
   readonly closed : boolean;
   readonly type  : "space";
   readonly name  : string;
+  [Symbol.toStringTag] ?: string;
+  toString : () => string;
   init  : () => Promise<ISkelfSpace>;
   read  : (size : Offset,offset? : Offset) => Promise<ISkelfBuffer>;
   write : (buffer : ISkelfBuffer | ArrayBuffer,offset? : Offset) => Promise<void>
@@ -26,6 +28,8 @@ export interface ISkelfReadStream {
   readonly closed : boolean;
   readonly type  : "readStream";
   name  : string;
+  [Symbol.toStringTag] ?: string;
+  toString : () => string;
   close : () => Promise<void>;
   init  : () => Promise<ISkelfReadStream>;
   read  : (size : Offset) => Promise<ISkelfBuffer>;
@@ -38,6 +42,8 @@ export interface ISkelfWriteStream {
   readonly closed : boolean;
   readonly type  : "writeStream"
   name  : string;
+  [Symbol.toStringTag] ?: string;
+  toString : () => string;
   close : () => Promise<void>;
   init  : () => Promise<ISkelfWriteStream>;
   write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
@@ -66,6 +72,7 @@ export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter
 export interface ISkelfDataType<T> {
   name : string;
   [Symbol.toStringTag] ?: string;
+  toString : () => string;
   read  : (input : SkelfInput,offset? : Offset) => Promise<T>;
   readAndGetSize : (input : SkelfInput,offset ? : Offset) => Promise<{value: T, size : IOffsetBlock}>;
   write : (value : T,output : SkelfOutput, offset? : Offset) => Promise<IOffsetBlock>;
@@ -76,6 +83,8 @@ export interface ISkelfDataType<T> {
 export interface ISkelfReader {
   readonly type : "reader";
   readonly name : string;
+  [Symbol.toStringTag] ?: string;
+  toString : () => string;
   readonly offset : IOffsetBlock
   readonly skip : (size : Offset) => Promise<void>;
   readonly read : (size : Offset) => Promise<ISkelfBuffer>;
@@ -84,6 +93,8 @@ export interface ISkelfReader {
 export interface ISkelfWriter {
   readonly type : "writer";
   readonly name : string;
+  [Symbol.toStringTag] ?: string;
+  toString : () => string;
   readonly offset : IOffsetBlock
   readonly write : (buffer : ISkelfBuffer | ArrayBuffer) => Promise<void>;
   readonly flush : () => Promise<void>;

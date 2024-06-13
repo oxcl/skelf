@@ -22,6 +22,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
     name : options.name,
     size : options.size,
     [Symbol.toStringTag]: options.name,
+    toString(){ return `[SkelfDataType ${options.name}]`},
     async read(input : SkelfInput,offset : Offset = 0){
       const { value } = await this.readAndGetSize!(input,offset);
       return value;
@@ -83,6 +84,8 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
 export class SpaceReader implements ISkelfReader {
   readonly name : string;
   readonly type = "reader";
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfReader ${this.name}]`}
   #offset : OffsetBlock;
   get offset(){ return this.#offset as IOffsetBlock;}
   constructor(private space : ISkelfSpace,initialOffset : Offset){
@@ -104,6 +107,8 @@ export class SpaceReader implements ISkelfReader {
 export class SpaceWriter implements ISkelfWriter {
   readonly name: string;
   readonly type = "writer"
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfWriter ${this.name}]`}
   #offset : OffsetBlock;
   get offset(){ return this.#offset as IOffsetBlock; };
   constructor(private space : ISkelfSpace, initialOffset : Offset){
@@ -127,6 +132,8 @@ export class SpaceWriter implements ISkelfWriter {
 export class StreamReader implements ISkelfReader {
   readonly name : string;
   readonly type = "reader";
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfReader ${this.name}]`}
   #offset = new OffsetBlock(0,0);
   get offset(){ return this.#offset as IOffsetBlock }
   constructor(private stream : ISkelfReadStream){
@@ -148,6 +155,8 @@ export class StreamReader implements ISkelfReader {
 export class StreamWriter implements ISkelfWriter {
   readonly name : string;
   readonly type = "writer"
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfWriter ${this.name}]`}
   #offset = new OffsetBlock(0,0);
   get offset() { return this.#offset as IOffsetBlock};
   constructor(private stream : ISkelfWriteStream){

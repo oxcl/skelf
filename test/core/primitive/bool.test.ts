@@ -7,8 +7,9 @@ import { ArraySpace } from "skelf/core"
 import { testDataTypeSymmetry } from "skelf/tools"
 
 describe("bool",()=>{
-  const space = new ArraySpace(50)
-  beforeAll(async ()=>{
+  let space : ArraySpace;
+  beforeEach(async ()=>{
+    space = new ArraySpace(50);
     await space.init();
   })
   const cases = [true,false];

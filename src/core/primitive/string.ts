@@ -9,30 +9,59 @@ function decode(buffer : ArrayBuffer){
 }
 const encoder = new TextEncoder();
 function encode(string : string){
-  return encoder.encode(string);
+  return encoder.encode(string).buffer;
 }
 
-export const cstring = createDataType<string>({
-  name: "cstring",
-  read: async function readCstring(reader){
-    const buffer = await readUntil(reader,new ArrayBuffer(1)) // read until null
-    return decode(new Uint8Array(buffer));
-  },
-  write: async function writeCstring(writer,value){
-    const buffer = encode(value).buffer
-    await writer.write(buffer);
-    await writer.write(new ArrayBuffer(1)); // write the terminating null character
-  }
-})
+export function delimitedString(delimiter : string,limit : number = Infinity){
+  const delimiterBuffer = encode(delimiter);
+  return createDataType<string>({
+    name: `delimitedString("${delimiter}")`,
+    read: async function readDelimitedString(reader){
+      const buffer = await readUntil(reader,delimiterBuffer,limit);
+      return decode(new Uint8Array(buffer));
+    },
+    write: async function writeDelimitedString(writer,value){
+      const buffer = encode(value);
+      await writer.write(buffer);
+      await writer.write(delimiterBuffer);
+    },
+    constraint: function constraintDelimitedString(value){
+      const delimiterIndex = (value + delimiter).indexOf(delimiter);
+      if(delimiterIndex !== value.length){
+        return `
+          delimitedString can not contain its own delimitter!.
+          delimiter: '${delimiter}'.
+          string: '${value}'.
+          delimiter found at index: '${delimiterIndex}'
+        `
+      }
+      else return true;
+    }
+  })
+}
+
+export const cstring = delimitedString("\0")
 
 export function dynamicString(sizeDataType : ISkelfDataType<number>){
   return createDataType<string>({
     name: `dynamicString(${sizeDataType.name})`,
     write: async function writeDynamicString(writer,string){
-      const stringBuffer = encode(string).buffer;
+      const stringBuffer = encode(string);
       const stringSize = stringBuffer.byteLength;
       // pass the size of the string to the size data type to write it with the writer
-      await sizeDataType.write(stringSize,writer);
+      try {
+        await sizeDataType.write(stringSize,writer);
+      }
+      catch(e){
+        if(e instanceof ConstraintError){
+          throw new ConstraintError(`
+            ${sizeDataType} is not capable of holding the length of the dynamicString.
+            byte length of the string: ${stringBuffer.byteLength}.
+            size data type constraint: ${e.message}.
+          `)
+        }
+        else throw e
+      }
 
       await writer.write(stringBuffer);
     },
@@ -55,7 +84,7 @@ export function fixedString(size : number,filler : number | string | undefined =
       return decode(uint8.slice(0,uint8.indexOf(fillerNumber)))
     },
     write: async function writeFixedString(writer,string){
-      const buffer = encode(string).buffer;
+      const buffer = encode(string);
       if(buffer.byteLength > size)
         throw new ConstraintError(`
           '${string}' is too big for '${this.name}' because ${this.name} is a fixed string with the
@@ -78,7 +107,7 @@ export function fixedString(size : number,filler : number | string | undefined =
 }
 
 export function constString(constantString : string){
-  const constantBuffer = encode(constantString).buffer;
+  const constantBuffer = encode(constantString);
   return createDataType<string>({
     name: `constString("${constantString.slice(0,15)}${constantString.length > 5 ? "...":""}")`,
     size: new OffsetBlock(constantBuffer.byteLength),
@@ -120,8 +149,17 @@ async function readUntil(
         bytesMatched = 0;
         arr.push(...cache);
         cache.length = 0;
+        if(number === delimiterArray[bytesMatched]){
+          cache.push(number)
+          bytesMatched++;
+        }
+        else {
+          arr.push(number);
+        }
       }
-      arr.push(number);
+      else {
+        arr.push(number);
+      }
     }
   }
   return new Uint8Array(arr).buffer

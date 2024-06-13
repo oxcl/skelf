@@ -28,6 +28,8 @@ export abstract class SkelfSpace implements ISkelfSpace {
   #closed : boolean = false;
 
   readonly type = "space";
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfSpace ${this.name}]`}
 
 
   // these functions should be provided by the creator of the object to the constructor (or a child class)

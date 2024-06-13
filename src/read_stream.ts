@@ -20,8 +20,8 @@ export abstract class SkelfReadStream implements ISkelfReadStream {
   private cacheSize : number = 0;
 
   readonly type = "readStream";
-
-
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfReadStream ${this.name}]`}
 
   // these functions should be provided by the child class the arguments for these functions only accept whole
   // byte values so all the logic for working with bits is abstracted away for the creator of the stream.

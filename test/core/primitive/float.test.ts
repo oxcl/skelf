@@ -10,7 +10,7 @@ import { testDataTypeSymmetry } from "skelf/tools"
 
 describe("float32",()=>{
   let space : ArraySpace;
-  beforeAll(async ()=>{
+  beforeEach(async ()=>{
     space = await new ArraySpace().init();
   })
   const cases = [

@@ -19,7 +19,9 @@ export abstract class SkelfWriteStream implements ISkelfWriteStream {
   private cacheByte : number = 0;
   private cacheSize : number = 0;
 
-  readonly type = "writeStream"
+  readonly type = "writeStream";
+  get [Symbol.toStringTag](){ return this.name}
+  toString(){ return `[SkelfWriteStream ${this.name}]`}
 
   // these functions should be provided by the creator of the object to the constructor (or a child class)
   // the arguments for these functions only accept whole byte values so all the logic for working with bits is
