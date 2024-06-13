@@ -59,7 +59,7 @@ export class FileSpace extends SkelfSpace {
       || buffer.byteLength > this.chunkCapacity -  this.writeChunkSize
     ){
       await this.flushWriteChunk();
-      this.writeChunkOffset = position;
+      this.writeChunkOffset = position + 1;
     }
     else {
       copyBuffer(buffer,this.writeChunk,0,buffer.byteLength,this.writeChunkSize);
