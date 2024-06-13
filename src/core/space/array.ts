@@ -3,8 +3,10 @@ import {SkelfSpace} from "skelf/space"
 export class ArraySpace extends SkelfSpace {
   static count : number = 0;
   readonly name : string;
-  constructor(readonly array : number[] = [], name : string | undefined = undefined){
+  readonly array : number[];
+  constructor(arrayOrNumber : number | number[] = [], name : string | undefined = undefined){
     super();
+    this.array = (typeof arrayOrNumber === "number") ? new Array(arrayOrNumber) : arrayOrNumber;
     this.name = `arraySpace:${name ?? ArraySpace.count++}`;
   }
   async _read(size : number,offset : number){
