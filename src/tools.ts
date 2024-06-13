@@ -41,3 +41,32 @@ export async function testDataTypeSymmetry<T>(
     `)
   }
 }
+
+
+export const GenerateRandom = {
+  buffer(size : number){
+    return new Uint8Array(
+      new Array(size).fill(null).map(()=> Math.floor(Math.random() * 255))
+    ).buffer;
+  },
+  arrayOf(type : "bool" | "number" | "float" | "string",size : number){
+    let gen;
+    switch(type){
+    case "bool":
+      gen = ()=> Math.random() > 0.5
+      break;
+    case "number":
+      gen = ()=> Math.floor(Math.random() * 256)
+      break;
+    case "float":
+      gen = ()=> Math.random() * 256
+      break;
+    case "string":
+      gen = ()=> "abcdefghijklmnopqrstuvwxyz1234567890".charAt(Math.floor(Math.random() * 37))
+      break;
+    default:
+      throw new Error("no")
+    }
+    return new Array(size).fill(null).map(gen as any)
+  }
+} as const;

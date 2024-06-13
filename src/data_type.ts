@@ -21,8 +21,8 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
   return {
     name : options.name,
     size : options.size,
-    [Symbol.toStringTag]: options.name,
-    toString(){ return `[SkelfDataType ${options.name}]`},
+    get[Symbol.toStringTag](){ return this.name},
+    toString(){ return `[SkelfDataType ${this.name}]`},
     async read(input : SkelfInput,offset : Offset = 0){
       const { value } = await this.readAndGetSize!(input,offset);
       return value;
@@ -44,7 +44,7 @@ export function createDataType<T>(options : createDataTypeOptions<T>) : ISkelfDa
       }
       if(options.size && (options.size.bytes !== size.bytes || options.size.bits !== size.bits)){
         throw new UnexpectedSizeError(`
-          data type '${this.name}' was expected to be ${this.size} bits in size but ${size} bits was
+          data type '${this.name}' was expected to be ${this.size} in size but ${size} was
           read by it. input: '${input}' at offset: ${offsetToString(offset)}.
         `)
       }

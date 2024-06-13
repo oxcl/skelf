@@ -41,8 +41,8 @@ export class FileSpace extends SkelfSpace {
 
     if(
       Number.isNaN(this.readChunkOffset)
-      || position < this.writeChunkOffset
-      || position + size > this.writeChunkOffset + this.chunkCapacity
+      || position < this.readChunkOffset
+      || position + size > this.readChunkOffset + this.chunkCapacity
     ){
       await this.file.read(new Uint8Array(this.readChunk),0,this.chunkCapacity,position);
       this.readChunkOffset = position;
@@ -56,7 +56,7 @@ export class FileSpace extends SkelfSpace {
     }
     else if(
       position !== this.writeChunkOffset + this.writeChunkSize
-      || position + buffer.byteLength > this.chunkCapacity -  this.writeChunkSize
+      || buffer.byteLength > this.chunkCapacity -  this.writeChunkSize
     ){
       await this.flushWriteChunk();
       this.writeChunkOffset = position;

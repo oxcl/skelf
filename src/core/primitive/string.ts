@@ -1,7 +1,7 @@
 import {createDataType} from "skelf/data_type"
 import {ISkelfDataType,ISkelfReader} from "skelf/types"
 import {ConstraintError} from "skelf/errors"
-import {OffsetBlock} from "skelf/utils"
+import {OffsetBlock,readUntil} from "skelf/utils"
 
 const decoder = new TextDecoder();
 function decode(buffer : ArrayBuffer){
@@ -14,6 +14,18 @@ function encode(string : string){
 
 export function delimitedString(delimiter : string,limit : number = Infinity){
   const delimiterBuffer = encode(delimiter);
+  function constraintDelimitedString(value : string){
+    const delimiterIndex = (value + delimiter).indexOf(delimiter);
+    if(delimiterIndex !== value.length){
+      return `
+        delimitedString can not contain its own delimitter!.
+        delimiter: '${delimiter}'.
+        string: '${value}'.
+        delimiter found at index: '${delimiterIndex}'
+      `
+    }
+    else return true;
+  }
   return createDataType<string>({
     name: `delimitedString("${delimiter}")`,
     read: async function readDelimitedString(reader){
@@ -21,26 +33,19 @@ export function delimitedString(delimiter : string,limit : number = Infinity){
       return decode(new Uint8Array(buffer));
     },
     write: async function writeDelimitedString(writer,value){
+      const constraintResult = constraintDelimitedString(value);
+      if(constraintResult !== true){
+        throw new ConstraintError(constraintResult);
+      }
       const buffer = encode(value);
       await writer.write(buffer);
       await writer.write(delimiterBuffer);
-    },
-    constraint: function constraintDelimitedString(value){
-      const delimiterIndex = (value + delimiter).indexOf(delimiter);
-      if(delimiterIndex !== value.length){
-        return `
-          delimitedString can not contain its own delimitter!.
-          delimiter: '${delimiter}'.
-          string: '${value}'.
-          delimiter found at index: '${delimiterIndex}'
-        `
-      }
-      else return true;
     }
   })
 }
 
 export const cstring = delimitedString("\0")
+cstring.name = "cstring"
 
 export function dynamicString(sizeDataType : ISkelfDataType<number>){
   return createDataType<string>({
@@ -125,42 +130,4 @@ export function constString(constantString : string){
       return true;
     }
   })
-}
-
-async function readUntil(
-  source : ISkelfReader,
-  delimiter : ArrayBuffer,
-  limit : number = Infinity
-){
-  const delimiterArray = new Uint8Array(delimiter);
-
-  const arr : number[] = [];
-  const cache : number[] = [];
-  let bytesMatched = 0;
-
-  while(bytesMatched < delimiterArray.byteLength && arr.length < limit){
-    const number = new DataView(await source.read(1)).getUint8(0);
-    if(number === delimiterArray[bytesMatched]){
-      bytesMatched++;
-      cache.push(number);
-    }
-    else {
-      if(cache.length > 0){
-        bytesMatched = 0;
-        arr.push(...cache);
-        cache.length = 0;
-        if(number === delimiterArray[bytesMatched]){
-          cache.push(number)
-          bytesMatched++;
-        }
-        else {
-          arr.push(number);
-        }
-      }
-      else {
-        arr.push(number);
-      }
-    }
-  }
-  return new Uint8Array(arr).buffer
 }

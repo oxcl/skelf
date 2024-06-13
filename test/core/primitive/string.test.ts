@@ -76,7 +76,7 @@ describe("dynamicString", () => {
       })
     })
   })
-  test("can handle large files with %s",async ()=>{
+  test("can handle large texts with %s",async ()=>{
     await expect(testDataTypeSymmetry(dynamicString(uint(16)),space,longString.repeat(300))).resolves.not.toThrow()
   })
 })

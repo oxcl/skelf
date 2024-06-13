@@ -261,3 +261,42 @@ function parseOffsetString(offsetString : string){
 }
 
 export const ZERO_BUFFER = convertToSkelfBuffer(new ArrayBuffer(0),new OffsetBlock(0,0))
+
+
+export async function readUntil(
+  source : ISkelfReader,
+  delimiter : ArrayBuffer,
+  limit : number = Infinity
+){
+  const delimiterArray = new Uint8Array(delimiter);
+
+  const arr : number[] = [];
+  const cache : number[] = [];
+  let bytesMatched = 0;
+
+  while(bytesMatched < delimiterArray.byteLength && arr.length < limit){
+    const number = new DataView(await source.read(1)).getUint8(0);
+    if(number === delimiterArray[bytesMatched]){
+      bytesMatched++;
+      cache.push(number);
+    }
+    else {
+      if(cache.length > 0){
+        bytesMatched = 0;
+        arr.push(...cache);
+        cache.length = 0;
+        if(number === delimiterArray[bytesMatched]){
+          cache.push(number)
+          bytesMatched++;
+        }
+        else {
+          arr.push(number);
+        }
+      }
+      else {
+        arr.push(number);
+      }
+    }
+  }
+  return new Uint8Array(arr).buffer
+}
