@@ -26,6 +26,7 @@ describe("fixedBuffer",()=>{
     })
   })
 })
+
 describe("dynamicBuffer",()=>{
   describe("dynamicBuffer is symmetric",()=>{
     const cases = [5,50,100,500,1024];
@@ -40,6 +41,22 @@ describe("dynamicBuffer",()=>{
            aArray.every((value,index)=> value === bArray[index]);
         })).resolves.not.toThrow();
       })
+    })
+  })
+})
+
+describe("delimitedBuffer",()=>{
+  describe("delimitedBuffer is symmetric",()=>{
+    const cases = [
+      [[5,10,5,17,20,42],[5,17,10]],
+      [[9,4,1,2,9,87,123,5],[0]],
+      [[0,23,1,1,1,2,6,8,250],[0,1,2,3]],
+      [[44,44,43,98,0,0,0,32,12,0],[25]]
+    ]
+    test.each(cases)("is symmetric for buffer %p with delimiter %p",async (sample,delimiter)=>{
+      await expect(
+        testDataTypeSymmetry(delimitedBuffer(new Uint8Array(delimiter).buffer),space,new Uint8Array(sample).buffer)
+      ).resolves.not.toThrow()
     })
   })
 })
