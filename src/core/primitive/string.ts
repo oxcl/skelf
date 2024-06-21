@@ -86,9 +86,19 @@ export function fixedString(size : number,filler : number | string | undefined =
     read: async function readFixedString(reader){
       const buffer = await reader.read(size);
       const uint8 = new Uint8Array(buffer);
-      return decode(uint8.slice(0,uint8.indexOf(fillerNumber)))
+      const fillerIndex = uint8.indexOf(fillerNumber)
+      if(fillerIndex === -1)
+        return decode(uint8)
+      else
+        return decode(uint8.slice(0,fillerIndex))
     },
     write: async function writeFixedString(writer,string){
+      if(string.split("").every((char)=> char.charCodeAt(0) === fillerNumber))
+        throw new ConstraintError(`
+          string for fixedString contains it's own filler (delimiter)
+          string: ${string}.
+          delimiter char code: ${fillerNumber}.
+        `)
       const buffer = encode(string);
       if(buffer.byteLength > size)
         throw new ConstraintError(`
