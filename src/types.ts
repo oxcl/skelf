@@ -58,14 +58,14 @@ export interface ISkelfBuffer extends ArrayBuffer {
   readonly size : IOffsetBlock;
 }
 
-export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfReader
-  | ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer // TODO: add blob support
+export type SkelfInput = ISkelfSpace | ISkelfReadStream | ISkelfReader| ISkelfBuffer
+  | ArrayBuffer | Uint8Array | Buffer // TODO: add blob support
   | ReadonlyArray<number>
   | Iterator<number> | AsyncIterator<number> | { [Symbol.iterator] : () => IterableIterator<number>}
   | FileHandle;
 
-export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter
-  | ISkelfBuffer | ArrayBuffer | Uint8Array | Buffer
+export type SkelfOutput = ISkelfSpace | ISkelfWriteStream | ISkelfWriter| ISkelfBuffer
+  | ArrayBuffer | Uint8Array | Buffer
   | number[]
   | FileHandle;
 

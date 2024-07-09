@@ -187,20 +187,20 @@ function inputToReader(input : SkelfInput, offset : Offset, name : string){
     },
     ["bufferLike"]: async () => {
       const space = await new BufferSpace(input as ArrayBuffer,name).init();
-      return [new SpaceReader(space,offset),space.close];
+      return [new SpaceReader(space,offset),()=> space.close()];
     },
     ["fileHandle"]: async ()=>{
       const space = await new FileSpace(input as FileHandle, name).init();
-      return [new SpaceReader(space,offset),space.close];
+      return [new SpaceReader(space,offset),()=> space.close()];
     },
     ["array"]: async ()=> {
-      if((input as number[]).every(item => typeof item === "number"))
+      if(!(input as number[]).every(item => typeof item === "number"))
         throw new UnknownInputForDataType(`
             received an invalid array as input value for data type '${name}'
             because some of it contains some non number values.
           `);
       const space = await new ArraySpace(input as number[],name).init();
-      return [new SpaceReader(space,offset),space.close];
+      return [new SpaceReader(space,offset),() => space.close()];
     },
     ["iterator"]: async ()=> {
       const stream = await new IteratorReadStream(input as Iterator<number>,name).init();
@@ -239,18 +239,18 @@ function outputToWriter(output : SkelfOutput, offset : Offset, name : string){
     },
     ["bufferLike"]: async ()=>{
       const space = await new BufferSpace(output as ArrayBuffer,name).init();
-      return [new SpaceWriter(space,offset),space.close];
+      return [new SpaceWriter(space,offset),()=> space.close()];
     },
     ["fileHandle"]: async ()=>{
       const space = await new FileSpace(output as FileHandle, name).init();
-      return [new SpaceWriter(space,offset),space.close];
+      return [new SpaceWriter(space,offset),()=> space.close()];
     },
     ["writer"]: async ()=>{
       return [output];
     },
     ["array"]: async ()=>{
       const space = await new ArraySpace(output as number[],name).init();
-      return [new SpaceWriter(space,offset),space.close];
+      return [new SpaceWriter(space,offset),()=> space.close()];
     }
   } as {[k:string] : ()=> Promise<[ISkelfWriter]> | Promise<[ISkelfWriter,()=>Promise<void>]>};
   const type = detectType(output)

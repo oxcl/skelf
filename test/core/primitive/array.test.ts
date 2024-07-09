@@ -39,11 +39,10 @@ describe("fixedArray",()=>{
       //[3,[10,1,2,2]],
       [4,[15,2,20,13,11]]
     ] as [number,number[]][];
-    test.only.each(nestLevels)("with %d nested arrays",async (level,sizes)=>{
+    test.each(nestLevels)("with %d nested arrays",async (level,sizes)=>{
       const sample = nest(level,[...sizes])
       const dataType = nestDataType(level,[...sizes]);
       await expect(testDataTypeSymmetry(dataType,space,sample)).resolves.not.toThrow()
-      console.log("done son")
     })
   })
 })
