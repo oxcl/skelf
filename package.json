@@ -1,6 +1,6 @@
 {
   "name": "skelf",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Understanding and Modifying Structured Binary Data",
   "main": "dist/index.js",
   "type": "module",
